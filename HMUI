@@ -981,4 +981,3 @@ function DeltaXLib:CreateWindow(Options)
     end
 
     return DeltaXLib
-end
