@@ -51,7 +51,8 @@ local function MakeDraggable(Frame, DragHandle)
     local DragStart = nil
     local StartPos = nil
 
-    DragHandle.InputBegan:Connect(function(Input)
+    DragHandle.InputBegan:Connect(function(Input, gameProcessed)
+        if gameProcessed then return end
         if (Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch) and not DeltaXLib.IsPromptOpen then
             Dragging = true
             DragStart = Input.Position
@@ -429,44 +430,59 @@ function DeltaXLib:CreateWindow(Options)
     })
     Create("UICorner", {Parent = PromptConfirm, CornerRadius = UDim.new(0, 8)})
 
-    CloseBtn.MouseButton1Click:Connect(function()
-        DeltaXLib.IsPromptOpen = true
-        PromptMask.Visible = true
-        PromptFrame.Visible = true
-        ApplyTween(PromptMask, {BackgroundTransparency = 0.5}, 0.3)
-        ApplyTween(PromptFrame, {Size = UDim2.new(0, 300, 0, 150)}, 0.4)
+    CloseBtn.InputBegan:Connect(function(Input, gameProcessed)
+        if gameProcessed then return end
+        if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
+            DeltaXLib.IsPromptOpen = true
+            PromptMask.Visible = true
+            PromptFrame.Visible = true
+            ApplyTween(PromptMask, {BackgroundTransparency = 0.5}, 0.3)
+            ApplyTween(PromptFrame, {Size = UDim2.new(0, 300, 0, 150)}, 0.4)
+        end
     end)
 
-    PromptCancel.MouseButton1Click:Connect(function()
-        ApplyTween(PromptMask, {BackgroundTransparency = 1}, 0.3)
-        ApplyTween(PromptFrame, {Size = UDim2.new(0, 0, 0, 0)}, 0.3)
-        task.wait(0.3)
-        PromptMask.Visible = false
-        PromptFrame.Visible = false
-        DeltaXLib.IsPromptOpen = false
+    PromptCancel.InputBegan:Connect(function(Input, gameProcessed)
+        if gameProcessed then return end
+        if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
+            ApplyTween(PromptMask, {BackgroundTransparency = 1}, 0.3)
+            ApplyTween(PromptFrame, {Size = UDim2.new(0, 0, 0, 0)}, 0.3)
+            task.wait(0.3)
+            PromptMask.Visible = false
+            PromptFrame.Visible = false
+            DeltaXLib.IsPromptOpen = false
+        end
     end)
 
-    PromptConfirm.MouseButton1Click:Connect(function()
-        ApplyTween(MainFrame, {Size = UDim2.new(0, 0, 0, 0), Position = UDim2.new(0.5, 0, 0.5, 0), BackgroundTransparency = 1}, 0.4)
-        task.wait(0.4)
-        ScreenGui:Destroy()
+    PromptConfirm.InputBegan:Connect(function(Input, gameProcessed)
+        if gameProcessed then return end
+        if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
+            ApplyTween(MainFrame, {Size = UDim2.new(0, 0, 0, 0), Position = UDim2.new(0.5, 0, 0.5, 0), BackgroundTransparency = 1}, 0.4)
+            task.wait(0.4)
+            ScreenGui:Destroy()
+        end
     end)
 
-    MinBtn.MouseButton1Click:Connect(function()
-        ApplyTween(MainFrame, {Size = UDim2.new(0, 0, 0, 0), BackgroundTransparency = 1}, 0.4)
-        task.wait(0.4)
-        MainFrame.Visible = false
-        MinimizedBall.Visible = true
-        ApplyTween(MinimizedBall, {Size = UDim2.new(0, 60, 0, 60)}, 0.4)
+    MinBtn.InputBegan:Connect(function(Input, gameProcessed)
+        if gameProcessed then return end
+        if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
+            ApplyTween(MainFrame, {Size = UDim2.new(0, 0, 0, 0), BackgroundTransparency = 1}, 0.4)
+            task.wait(0.4)
+            MainFrame.Visible = false
+            MinimizedBall.Visible = true
+            ApplyTween(MinimizedBall, {Size = UDim2.new(0, 60, 0, 60)}, 0.4)
+        end
     end)
 
-    BallBtn.MouseButton1Click:Connect(function()
-        ApplyTween(MinimizedBall, {Size = UDim2.new(0, 0, 0, 0)}, 0.4)
-        task.wait(0.2)
-        MinimizedBall.Visible = false
-        MainFrame.Visible = true
-        MainFrame.BackgroundTransparency = 0
-        ApplyTween(MainFrame, {Size = UDim2.new(0, 600, 0, 400)}, 0.4)
+    BallBtn.InputBegan:Connect(function(Input, gameProcessed)
+        if gameProcessed then return end
+        if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
+            ApplyTween(MinimizedBall, {Size = UDim2.new(0, 0, 0, 0)}, 0.4)
+            task.wait(0.2)
+            MinimizedBall.Visible = false
+            MainFrame.Visible = true
+            MainFrame.BackgroundTransparency = 0
+            ApplyTween(MainFrame, {Size = UDim2.new(0, 600, 0, 400)}, 0.4)
+        end
     end)
 
     SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
@@ -544,18 +560,21 @@ function DeltaXLib:CreateWindow(Options)
         Create("UIListLayout", {Parent = TabPage, Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder})
         Create("UIPadding", {Parent = TabPage, PaddingLeft = UDim.new(0, 5), PaddingTop = UDim.new(0, 5), PaddingRight = UDim.new(0, 5)})
 
-        TabBtn.MouseButton1Click:Connect(function()
-            if DeltaXLib.IsPromptOpen then return end
-            for _, v in pairs(ContentHolder:GetChildren()) do if v:IsA("ScrollingFrame") then v.Visible = false end end
-            for _, v in pairs(TabContainer:GetChildren()) do 
-                if v:IsA("TextButton") then 
-                    ApplyTween(v, {TextColor3 = DeltaXLib.Theme.TextDark, BackgroundColor3 = DeltaXLib.Theme.Secondary}, 0.2) 
-                end 
+        TabBtn.InputBegan:Connect(function(Input, gameProcessed)
+            if gameProcessed then return end
+            if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
+                if DeltaXLib.IsPromptOpen then return end
+                for _, v in pairs(ContentHolder:GetChildren()) do if v:IsA("ScrollingFrame") then v.Visible = false end end
+                for _, v in pairs(TabContainer:GetChildren()) do 
+                    if v:IsA("TextButton") then 
+                        ApplyTween(v, {TextColor3 = DeltaXLib.Theme.TextDark, BackgroundColor3 = DeltaXLib.Theme.Secondary}, 0.2) 
+                    end 
+                end
+                TabPage.Visible = true
+                DeltaXLib.CurrentTab = TabPage
+                ApplyTween(TabBtn, {TextColor3 = DeltaXLib.Theme.Accent, BackgroundColor3 = Color3.fromRGB(40, 40, 55)}, 0.2)
+                Ripple(TabBtn)
             end
-            TabPage.Visible = true
-            DeltaXLib.CurrentTab = TabPage
-            ApplyTween(TabBtn, {TextColor3 = DeltaXLib.Theme.Accent, BackgroundColor3 = Color3.fromRGB(40, 40, 55)}, 0.2)
-            Ripple(TabBtn)
         end)
 
         if DeltaXLib.CurrentTab == nil then
@@ -608,10 +627,13 @@ function DeltaXLib:CreateWindow(Options)
                 Text = ""
             })
 
-            RealBtn.MouseButton1Click:Connect(function()
-                if DeltaXLib.IsPromptOpen then return end
-                Ripple(BtnFrame)
-                if Config.Callback then Config.Callback() end
+            RealBtn.InputBegan:Connect(function(Input, gameProcessed)
+                if gameProcessed then return end
+                if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
+                    if DeltaXLib.IsPromptOpen then return end
+                    Ripple(BtnFrame)
+                    if Config.Callback then Config.Callback() end
+                end
             end)
 
             return BtnFrame
@@ -662,12 +684,15 @@ function DeltaXLib:CreateWindow(Options)
                 Text = ""
             })
 
-            ClickBtn.MouseButton1Click:Connect(function()
-                if DeltaXLib.IsPromptOpen then return end
-                State = not State
-                ApplyTween(SwitchBG, {BackgroundColor3 = State and DeltaXLib.Theme.Accent or Color3.fromRGB(50, 50, 60)}, 0.3)
-                ApplyTween(Dot, {Position = State and UDim2.new(1, -22, 0.5, -9) or UDim2.new(0, 3, 0.5, -9)}, 0.3)
-                if Config.Callback then Config.Callback(State) end
+            ClickBtn.InputBegan:Connect(function(Input, gameProcessed)
+                if gameProcessed then return end
+                if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
+                    if DeltaXLib.IsPromptOpen then return end
+                    State = not State
+                    ApplyTween(SwitchBG, {BackgroundColor3 = State and DeltaXLib.Theme.Accent or Color3.fromRGB(50, 50, 60)}, 0.3)
+                    ApplyTween(Dot, {Position = State and UDim2.new(1, -22, 0.5, -9) or UDim2.new(0, 3, 0.5, -9)}, 0.3)
+                    if Config.Callback then Config.Callback(State) end
+                end
             end)
 
             return TglFrame
@@ -736,7 +761,8 @@ function DeltaXLib:CreateWindow(Options)
                 if Config.Callback then Config.Callback(Value) end
             end
 
-            SliderFrame.InputBegan:Connect(function(Input)
+            SliderFrame.InputBegan:Connect(function(Input, gameProcessed)
+                if gameProcessed then return end
                 if (Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch) and not DeltaXLib.IsDraggingSlider and not DeltaXLib.IsPromptOpen then
                     IsThisDragging = true
                     DeltaXLib.IsDraggingSlider = true
@@ -820,7 +846,12 @@ function DeltaXLib:CreateWindow(Options)
                 TabPage.CanvasSize = UDim2.new(0, 0, 0, TabPage.UIListLayout.AbsoluteContentSize.Y + 20)
             end
 
-            Header.MouseButton1Click:Connect(ToggleSection)
+            Header.InputBegan:Connect(function(Input, gameProcessed)
+                if gameProcessed then return end
+                if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
+                    ToggleSection()
+                end
+            end)
 
             local SectionItems = {}
             function SectionItems:Button(c) 
@@ -938,21 +969,27 @@ function DeltaXLib:CreateWindow(Options)
                     TextColor3 = DeltaXLib.Theme.TextDark,
                     TextSize = 12
                 })
-                OptBtn.MouseButton1Click:Connect(function()
-                    if DeltaXLib.IsPromptOpen then return end
-                    TitleLabel.Text = Config.Title .. " : " .. opt
-                    Dropped = false
-                    ApplyTween(DropFrame, {Size = UDim2.new(1, 0, 0, 45)}, 0.3)
-                    if Config.Callback then Config.Callback(opt) end
+                OptBtn.InputBegan:Connect(function(Input, gameProcessed)
+                    if gameProcessed then return end
+                    if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
+                        if DeltaXLib.IsPromptOpen then return end
+                        TitleLabel.Text = Config.Title .. " : " .. opt
+                        Dropped = false
+                        ApplyTween(DropFrame, {Size = UDim2.new(1, 0, 0, 45)}, 0.3)
+                        if Config.Callback then Config.Callback(opt) end
+                    end
                 end)
             end
 
-            TopBtn.MouseButton1Click:Connect(function()
-                if DeltaXLib.IsPromptOpen then return end
-                Dropped = not Dropped
-                ApplyTween(DropFrame, {Size = UDim2.new(1, 0, 0, Dropped and (45 + #Config.Options * 30) or 45)}, 0.3)
-                task.wait(0.3)
-                TabPage.CanvasSize = UDim2.new(0, 0, 0, TabPage.UIListLayout.AbsoluteContentSize.Y + 20)
+            TopBtn.InputBegan:Connect(function(Input, gameProcessed)
+                if gameProcessed then return end
+                if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
+                    if DeltaXLib.IsPromptOpen then return end
+                    Dropped = not Dropped
+                    ApplyTween(DropFrame, {Size = UDim2.new(1, 0, 0, Dropped and (45 + #Config.Options * 30) or 45)}, 0.3)
+                    task.wait(0.3)
+                    TabPage.CanvasSize = UDim2.new(0, 0, 0, TabPage.UIListLayout.AbsoluteContentSize.Y + 20)
+                end
             end)
 
             return DropFrame
