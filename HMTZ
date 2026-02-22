@@ -1,0 +1,121 @@
+local HMNOTIFY = {}
+local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
+local RunService = game:GetService("RunService")
+
+local CONFIG = {
+    PADDING = 10,
+    NOTIFY_SIZE = Vector2.new(300, 85),
+    TWEEN_TIME = 0.6,
+    OFFSET_45 = 200,
+    ROOT_FOLDER = "黄某音频"
+}
+
+local ActiveNotifications = {["topleft"] = {}, ["topright"] = {}, ["bottomleft"] = {}, ["bottomright"] = {}}
+
+local function HandleAudio(url, category)
+    if not isfolder(CONFIG.ROOT_FOLDER) then makefolder(CONFIG.ROOT_FOLDER) end
+    local catPath = CONFIG.ROOT_FOLDER .. "/" .. (category or "通知音频")
+    if not isfolder(catPath) then makefolder(catPath) end
+    
+    local fileName = url:match("rbxassetid://") and (url:gsub("rbxassetid://", "") .. ".mp3") or (HttpService:GenerateGUID(false) .. ".mp3")
+    local filePath = catPath .. "/" .. fileName
+
+    if not isfile(filePath) then
+        if url:find("http") then
+            local s, b = pcall(function() return game:HttpGet(url) end)
+            if s then writefile(filePath, b) end
+        end
+    end
+
+    local sound = Instance.new("Sound", game:GetService("SoundService"))
+    sound.SoundId = (not url:find("http") and not isfile(filePath)) and url or getcustomasset(filePath)
+    sound.Volume = 0.5
+    sound:Play()
+    sound.Ended:Connect(function() sound:Destroy() end)
+end
+
+local function GetPos(anchor, index, off)
+    local x, y, ox, oy = 0, 0, 0, 0
+    local dist = CONFIG.OFFSET_45
+    local spacing = (index - 1) * (CONFIG.NOTIFY_SIZE.Y + CONFIG.PADDING)
+
+    if anchor == "topright" then
+        x, y, ox, oy = 1, 0, -CONFIG.NOTIFY_SIZE.X - CONFIG.PADDING, CONFIG.PADDING + spacing
+        if off then ox, oy = ox + dist, oy - dist end
+    elseif anchor == "topleft" then
+        x, y, ox, oy = 0, 0, CONFIG.PADDING, CONFIG.PADDING + spacing
+        if off then ox, oy = ox - dist, oy - dist end
+    elseif anchor == "bottomright" then
+        x, y, ox, oy = 1, 1, -CONFIG.NOTIFY_SIZE.X - CONFIG.PADDING, -CONFIG.NOTIFY_SIZE.Y - CONFIG.PADDING - spacing
+        if off then ox, oy = ox + dist, oy + dist end
+    elseif anchor == "bottomleft" then
+        x, y, ox, oy = 0, 1, CONFIG.PADDING, -CONFIG.NOTIFY_SIZE.Y - CONFIG.PADDING - spacing
+        if off then ox, oy = ox - dist, oy + dist end
+    end
+    return UDim2.new(x, ox, y, oy)
+end
+
+local function UpdateStack(anchor)
+    for i, n in ipairs(ActiveNotifications[anchor]) do
+        TweenService:Create(n, TweenInfo.new(CONFIG.TWEEN_TIME, Enum.EasingStyle.Back), {Position = GetPos(anchor, i, false)}):Play()
+    end
+end
+
+function HMNOTIFY.SHOW(data)
+    local anchor = data.position:lower()
+    local duration = data.duration or 5
+    
+    local PlayerGui = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+    local sg = PlayerGui:FindFirstChild("HMNOTIFY_UI") or Instance.new("ScreenGui", PlayerGui)
+    sg.Name = "HMNOTIFY_UI"
+    sg.ResetOnSpawn = false
+
+    local frame = Instance.new("Frame", sg)
+    frame.Size = UDim2.new(0, CONFIG.NOTIFY_SIZE.X, 0, CONFIG.NOTIFY_SIZE.Y)
+    frame.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
+    frame.BorderSizePixel = 0
+    frame.Position = GetPos(anchor, #ActiveNotifications[anchor] + 1, true)
+    
+    local ic = Instance.new("UICorner", frame) ic.CornerRadius = UDim.new(0, 10)
+    local is = Instance.new("UIStroke", frame) is.Color = Color3.fromRGB(50, 50, 50) is.Thickness = 1.5
+
+    local icon = Instance.new("ImageLabel", frame)
+    icon.Size = UDim2.new(0, 35, 0, 35)
+    icon.Position = UDim2.new(0, 12, 0.5, -17.5)
+    icon.BackgroundTransparency = 1
+    icon.Image = data.icon or ""
+
+    local t = Instance.new("TextLabel", frame)
+    t.Size = UDim2.new(1, -70, 0, 20)
+    t.Position = UDim2.new(0, 60, 0, 15)
+    t.Text = data.title; t.Font = Enum.Font.GothamBold; t.TextColor3 = Color3.new(1,1,1); t.TextSize = 16; t.TextXAlignment = 0; t.BackgroundTransparency = 1
+
+    local st = Instance.new("TextLabel", frame)
+    st.Size = UDim2.new(1, -70, 0, 30)
+    st.Position = UDim2.new(0, 60, 0, 35)
+    st.Text = data.subtitle; st.Font = Enum.Font.Gotham; st.TextColor3 = Color3.fromRGB(180,180,180); st.TextSize = 14; st.TextXAlignment = 0; st.TextYAlignment = 0; st.BackgroundTransparency = 1; st.TextWrapped = true
+
+    local bar = Instance.new("Frame", frame)
+    bar.Size = UDim2.new(1, 0, 0, 3)
+    bar.Position = UDim2.new(0, 0, 1, -3)
+    bar.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+    bar.BorderSizePixel = 0
+
+    table.insert(ActiveNotifications[anchor], frame)
+    if data.sound then task.spawn(HandleAudio, data.sound, data.soundtype) end
+
+    TweenService:Create(frame, TweenInfo.new(CONFIG.TWEEN_TIME, Enum.EasingStyle.Exponential), {Position = GetPos(anchor, #ActiveNotifications[anchor], false)}):Play()
+    TweenService:Create(bar, TweenInfo.new(duration, Enum.EasingStyle.Linear), {Size = UDim2.new(0, 0, 0, 3)}):Play()
+
+    task.delay(duration, function()
+        local idx = table.find(ActiveNotifications[anchor], frame)
+        if idx then table.remove(ActiveNotifications[anchor], idx) end
+        local tween = TweenService:Create(frame, TweenInfo.new(CONFIG.TWEEN_TIME, Enum.EasingStyle.Exponential), {Position = GetPos(anchor, 1, true), BackgroundTransparency = 1})
+        tween:Play()
+        UpdateStack(anchor)
+        tween.Completed:Connect(function() frame:Destroy() end)
+    end)
+end
+
+return HMNOTIFY
