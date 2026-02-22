@@ -1015,8 +1015,7 @@ end)
             local SectionItems = {}
             local function AddToSection(MethodName, ComponentConfig)
                 ComponentConfig.Parent = Container
-                local Item = CompLib[MethodName](CompLib, ComponentConfig)
-                return Item
+                return CompLib[MethodName](CompLib, ComponentConfig)
             end
             function SectionItems:Button(Conf) return AddToSection("Button", Conf) end
             function SectionItems:Toggle(Conf) return AddToSection("Toggle", Conf) end
@@ -1088,23 +1087,22 @@ end)
         end
         
         function CompLib:Dropdown(Config)
-    local SelectedOptions = {}
-    local Expanded = false
-    local DropFrame = Create("Frame", {
-        Parent = Config.Parent or TabPage,
-        Size = UDim2.new(1, 0, 0, 50),
-        ClipsDescendants = true,
-        BackgroundColor3 = DeltaXLib.Theme.Secondary
-    })
+            local SelectedOptions = {}
+            local Expanded = false
+            local DropFrame = Create("Frame", {
+                Parent = Config.Parent or TabPage,
+                Size = UDim2.new(1, 0, 0, 50),
+                ClipsDescendants = true,
+                BackgroundColor3 = DeltaXLib.Theme.Secondary,
+                Name = Config.Title .. "_Drop"
+            })
             Create("UICorner", {Parent = DropFrame, CornerRadius = DeltaXLib.Theme.Rounded})
-
             local TopBtn = Create("TextButton", {
                 Parent = DropFrame,
                 BackgroundTransparency = 1,
-                Size = UDim2.new(1, 0, 0, 45),
+                Size = UDim2.new(1, 0, 0, 50),
                 Text = ""
             })
-
             local TitleLabel = Create("TextLabel", {
                 Name = "TitleLabel",
                 Parent = TopBtn,
@@ -1112,59 +1110,71 @@ end)
                 Position = UDim2.new(0, 15, 0, 0),
                 Size = UDim2.new(1, -50, 1, 0),
                 Font = Enum.Font.GothamBold,
-                Text = Config.Title .. " : " .. (Config.Options[1] or "无"),
+                Text = Config.Title .. " : " .. (Config.AllowNone and "未选择" or "请选择"),
                 TextColor3 = DeltaXLib.Theme.White,
                 TextSize = 14,
                 TextXAlignment = Enum.TextXAlignment.Left
             })
-
             local List = Create("Frame", {
                 Parent = DropFrame,
                 BackgroundTransparency = 1,
-                Position = UDim2.new(0, 0, 0, 45),
-                Size = UDim2.new(1, 0, 0, #Config.Options * 30)
+                Position = UDim2.new(0, 0, 0, 50),
+                Size = UDim2.new(1, 0, 0, #Config.Options * 35)
             })
-            Create("UIListLayout", {Parent = List})
-
+            local ListLayout = Create("UIListLayout", {Parent = List, Padding = UDim.new(0, 2)})
+            local function UpdateTitle()
+                if #SelectedOptions == 0 then
+                    TitleLabel.Text = Config.Title .. " : " .. (Config.AllowNone and "未选择" or "请选择")
+                else
+                    TitleLabel.Text = Config.Title .. " : " .. table.concat(SelectedOptions, ", ")
+                end
+            end
             for _, opt in pairs(Config.Options) do
                 local OptBtn = Create("TextButton", {
                     Parent = List,
                     BackgroundColor3 = Color3.fromRGB(35, 35, 45),
-                    Size = UDim2.new(1, 0, 0, 30),
+                    Size = UDim2.new(1, 0, 0, 35),
                     Font = Enum.Font.Gotham,
-                    Text = opt,
-                    TextColor3 = DeltaXLib.Theme.TextDark,
-                    TextSize = 12
+                    Text = "  " .. tostring(opt),
+                    TextColor3 = Color3.fromRGB(200, 200, 200),
+                    TextSize = 12,
+                    TextXAlignment = Enum.TextXAlignment.Left,
+                    AutoButtonColor = false
                 })
+                Create("UICorner", {Parent = OptBtn, CornerRadius = UDim.new(0, 4)})
                 OptBtn.InputBegan:Connect(function(Input)
-            if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-                if IsScrolling or DeltaXLib.IsDraggingSlider then return end
-                if table.find(SelectedOptions, opt) then
-                    table.remove(SelectedOptions, table.find(SelectedOptions, opt))
-                    OptLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-                else
-                    table.insert(SelectedOptions, opt)
-                    OptLabel.TextColor3 = DeltaXLib.Theme.Accent 
-                end
-                if Config.Callback then Config.Callback(SelectedOptions) end
+                    if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
+                        if IsScrolling or DeltaXLib.IsDraggingSlider then return end
+                        
+                        local foundIndex = table.find(SelectedOptions, opt)
+                        if foundIndex then
+                            table.remove(SelectedOptions, foundIndex)
+                            ApplyTween(OptBtn, {TextColor3 = Color3.fromRGB(200, 200, 200)}, 0.2)
+                        else
+                            table.insert(SelectedOptions, opt)
+                            ApplyTween(OptBtn, {TextColor3 = DeltaXLib.Theme.Accent}, 0.2)
+                        end
+                        UpdateTitle()
+                        if Config.Callback then Config.Callback(SelectedOptions) end
+                    end
+                end)
             end
-        end)
-            end
-
             TopBtn.InputBegan:Connect(function(Input)
-        if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-            if IsScrolling or DeltaXLib.IsDraggingSlider then return end
-            Expanded = not Expanded
-            ApplyTween(DropFrame, {Size = Expanded and UDim2.new(1, 0, 0, #Config.Options * 40 + 55) or UDim2.new(1, 0, 0, 50)}, 0.3)
-            ApplyTween(Arrow, {Rotation = Expanded and 180 or 0}, 0.3)
-        end
-    end)
+                if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
+                    if IsScrolling or DeltaXLib.IsDraggingSlider then return end
+                    Expanded = not Expanded
+                    local targetHeight = Expanded and (50 + ListLayout.AbsoluteContentSize.Y + 5) or 50
+                    ApplyTween(DropFrame, {Size = UDim2.new(1, 0, 0, targetHeight)}, 0.3)
+                end
+            end)
             
             TopBtn.MouseLeave:Connect(function()
                 ApplyTween(DropFrame, {BackgroundColor3 = DeltaXLib.Theme.Secondary}, 0.2)
             end)
-
-            return DropFrame
+            local DropMethods = { Instance = DropFrame }
+            function DropMethods:GetSelected() return SelectedOptions end
+            
+            return DropMethods
         end
 
         function CompLib:Label(Config)
