@@ -995,7 +995,7 @@ function DeltaXLib:CreateWindow(Options)
             return DropFrame
         end
 
-                function CompLib:Label(Config)
+        function CompLib:Label(Config)
             local Lab = Create("Frame", {
                 Parent = TabPage,
                 BackgroundTransparency = 1,
@@ -1014,13 +1014,14 @@ function DeltaXLib:CreateWindow(Options)
             })
             return Lab
         end
-
-        function CompLib:Info(Config)
+                function CompLib:Info(Config)
+            local InfoValues = Config.Values or {}
             local InfoFrame = Create("Frame", {
                 Parent = TabPage,
                 BackgroundColor3 = Color3.fromRGB(35, 35, 45),
                 Size = UDim2.new(1, 0, 0, 45),
-                Name = (Config.Title or "Info") .. "_Info"
+                Name = (Config.Title or "Info") .. "_Info",
+                ClipsDescendants = true
             })
             Create("UICorner", {Parent = InfoFrame, CornerRadius = DeltaXLib.Theme.Rounded})
             Create("UIStroke", {
@@ -1030,39 +1031,60 @@ function DeltaXLib:CreateWindow(Options)
                 Transparency = 0.6
             })
 
-            local InfoIcon = Create("ImageLabel", {
-                Parent = InfoFrame,
-                BackgroundTransparency = 1,
-                Position = UDim2.new(0, 12, 0.5, -10),
-                Size = UDim2.new(0, 20, 0, 20),
-                Image = "rbxassetid://11419713342",
-                ImageColor3 = DeltaXLib.Theme.Accent
-            })
-
             local TitleLabel = Create("TextLabel", {
                 Name = "TitleLabel",
                 Parent = InfoFrame,
                 BackgroundTransparency = 1,
-                Position = UDim2.new(0, 40, 0, 5),
-                Size = UDim2.new(1, -50, 0, 15),
+                Position = UDim2.new(0, 15, 0, 5),
+                Size = UDim2.new(1, -30, 0, 15),
                 Font = Enum.Font.GothamBold,
-                Text = Config.Title or "信息",
-                TextColor3 = DeltaXLib.Theme.TextDark,
+                Text = Config.Title or "实时数据",
+                TextColor3 = DeltaXLib.Theme.Accent,
                 TextSize = 12,
                 TextXAlignment = Enum.TextXAlignment.Left
             })
 
-            local ContentLabel = Create("TextLabel", {
+            local DataContainer = Create("Frame", {
                 Parent = InfoFrame,
                 BackgroundTransparency = 1,
-                Position = UDim2.new(0, 40, 0, 20),
-                Size = UDim2.new(1, -50, 0, 20),
-                Font = Enum.Font.GothamMedium,
-                Text = Config.Content or "N/A",
-                TextColor3 = DeltaXLib.Theme.White,
-                TextSize = 14,
-                TextXAlignment = Enum.TextXAlignment.Left
+                Position = UDim2.new(0, 15, 0, 22),
+                Size = UDim2.new(1, -30, 0, 0)
             })
+            local DataLayout = Create("UIListLayout", {
+                Parent = DataContainer,
+                Padding = UDim.new(0, 2),
+                SortOrder = Enum.SortOrder.LayoutOrder
+            })
+
+            local Labels = {}
+
+            local function RefreshSize()
+                local ContentSize = DataLayout.AbsoluteContentSize.Y
+                ApplyTween(InfoFrame, {Size = UDim2.new(1, 0, 0, 30 + ContentSize + 5)}, 0.2)
+            end
+
+            local function SetData(Key, Value)
+                if not Labels[Key] then
+                    Labels[Key] = Create("TextLabel", {
+                        Parent = DataContainer,
+                        BackgroundTransparency = 1,
+                        Size = UDim2.new(1, 0, 0, 18),
+                        Font = Enum.Font.GothamMedium,
+                        Text = string.format("%s: %s", tostring(Key), tostring(Value)),
+                        TextColor3 = DeltaXLib.Theme.White,
+                        TextSize = 13,
+                        TextXAlignment = Enum.TextXAlignment.Left,
+                        RichText = true
+                    })
+                    RefreshSize()
+                else
+                    Labels[Key].Text = string.format("%s: %s", tostring(Key), tostring(Value))
+                end
+            end
+
+            for k, v in pairs(InfoValues) do
+                SetData(k, v)
+            end
 
             local InteractionBtn = Create("TextButton", {
                 Parent = InfoFrame,
@@ -1077,7 +1099,6 @@ function DeltaXLib:CreateWindow(Options)
                         ApplyTween(InfoFrame, {BackgroundColor3 = Color3.fromRGB(55, 55, 65)}, 0.2)
                         return
                     end
-                    if DeltaXLib.IsPromptOpen then return end
                     Ripple(InfoFrame)
                 end
             end)
@@ -1087,12 +1108,19 @@ function DeltaXLib:CreateWindow(Options)
             end)
 
             local InfoMethods = {}
-            function InfoMethods:Update(NewText)
-                if ContentLabel then
-                    ContentLabel.Text = tostring(NewText)
+            
+            function InfoMethods:Update(Key, NewValue)
+                if Key and not NewValue then
+                    for k, _ in pairs(Labels) do
+                        SetData(k, Key)
+                        break
+                    end
+                else
+                    SetData(Key, NewValue)
                 end
             end
-            return InfoMethods 
+
+            return InfoMethods
         end
 
         return CompLib
