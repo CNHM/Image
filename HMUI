@@ -606,6 +606,17 @@ end)
             AutomaticCanvasSize = Enum.AutomaticSize.Y,
             Name = Name
         })
+        local IsScrolling = false
+        local LastCanvasPos = TabPage.CanvasPosition
+        TabPage:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
+            IsScrolling = true
+            LastCanvasPos = TabPage.CanvasPosition
+            task.delay(0.15, function()
+                if TabPage.CanvasPosition == LastCanvasPos then
+                    IsScrolling = false
+                end
+            end)
+        end)
         Create("UIListLayout", {Parent = TabPage, Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder})
         Create("UIPadding", {Parent = TabPage, PaddingLeft = UDim.new(0, 5), PaddingTop = UDim.new(0, 5), PaddingRight = UDim.new(0, 5)})
 
@@ -687,7 +698,7 @@ end)
 
             RealBtn.InputBegan:Connect(function(Input)
                 if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-                    if IsPlayerBusy() then
+                    if IsPlayerBusy() or IsScrolling then
                         ApplyTween(BtnFrame, {BackgroundColor3 = Color3.fromRGB(50, 50, 60)}, 0.2)
                         return
                     end
@@ -835,7 +846,7 @@ end)
 
             SliderFrame.InputBegan:Connect(function(Input)
                 if (Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch) and not DeltaXLib.IsDraggingSlider and not DeltaXLib.IsPromptOpen then
-                    if IsPlayerBusy() and not IsThisDragging then
+                    if (IsPlayerBusy() or IsScrolling) and not IsThisDragging then
                         ApplyTween(SliderFrame, {BackgroundColor3 = Color3.fromRGB(50, 50, 60)}, 0.2)
                         return
                     end
@@ -931,10 +942,14 @@ end)
 
             Header.InputBegan:Connect(function(Input)
                 if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
+                    if IsPlayerBusy() or IsScrolling then
+                        ApplyTween(SectionFrame, {BackgroundColor3 = Color3.fromRGB(40, 40, 45)}, 0.2)
+                        return
+                    end
                     ToggleSection()
                 end
             end)
-            
+
             Header.MouseLeave:Connect(function()
                 ApplyTween(SectionFrame, {BackgroundColor3 = Color3.fromRGB(25, 25, 30)}, 0.2)
             end)
@@ -1065,8 +1080,8 @@ end)
                     TextSize = 12
                 })
                 OptBtn.InputBegan:Connect(function(Input)
-                    if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-                        if IsPlayerBusy() then return end
+                if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
+                    if IsPlayerBusy() or IsScrolling then return end
                         if DeltaXLib.IsPromptOpen then return end
                         TitleLabel.Text = Config.Title .. " : " .. opt
                         Dropped = false
@@ -1078,7 +1093,7 @@ end)
 
             TopBtn.InputBegan:Connect(function(Input)
                 if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-                    if IsPlayerBusy() then
+                    if IsPlayerBusy() or IsScrolling then
                         ApplyTween(DropFrame, {BackgroundColor3 = Color3.fromRGB(50, 50, 60)}, 0.2)
                         return
                     end
@@ -1190,13 +1205,15 @@ end)
             })
             InteractionBtn.InputBegan:Connect(function(Input)
                 if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-                    if IsPlayerBusy() then
+                    if IsPlayerBusy() or IsScrolling then
                         ApplyTween(InfoFrame, {BackgroundColor3 = Color3.fromRGB(55, 55, 65)}, 0.2)
                         return
                     end
+                    if DeltaXLib.IsPromptOpen then return end
                     Ripple(InfoFrame)
                 end
             end)
+
             InteractionBtn.MouseLeave:Connect(function()
                 ApplyTween(InfoFrame, {BackgroundColor3 = Color3.fromRGB(35, 35, 45)}, 0.2)
             end)
