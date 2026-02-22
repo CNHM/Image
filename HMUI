@@ -928,7 +928,7 @@ end)
         function CompLib:Section(Config)
             local Expanded = Config.Default or false
             local SectionFrame = Create("Frame", {
-                Parent = TabPage,
+                Parent = Config.Parent or TabPage,
                 BackgroundColor3 = Color3.fromRGB(25, 25, 30),
                 Size = UDim2.new(1, 0, 0, 40),
                 ClipsDescendants = true
@@ -970,10 +970,19 @@ end)
             local Container = Create("Frame", {
                 Parent = SectionFrame,
                 BackgroundTransparency = 1,
-                Position = UDim2.new(0, 5, 0, 45),
+                Position = UDim2.new(0, 5, 0, 35),
                 Size = UDim2.new(1, -10, 0, 0)
             })
-            local Layout = Create("UIListLayout", {Parent = Container, Padding = UDim.new(0, 8)})
+            local Layout = Create("UIListLayout", {
+                Parent = Container,
+                Padding = UDim.new(0, 5),
+                SortOrder = Enum.SortOrder.LayoutOrder
+            })
+            Layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+                if Expanded then
+                    ApplyTween(SectionFrame, {Size = UDim2.new(1, 0, 0, Layout.AbsoluteContentSize.Y + 45)}, 0.2)
+                end
+            end)
 
             local function ToggleSection()
                 if IsPlayerBusy() then
@@ -1004,19 +1013,17 @@ end)
             end)
 
             local SectionItems = {}
-            function SectionItems:Button(c) 
-                c.Parent = Container
-                local b = CompLib:Button(c)
-                if Expanded then SectionFrame.Size = UDim2.new(1, 0, 0, Layout.AbsoluteContentSize.Y + 55) end
-                return b
+            local function AddToSection(MethodName, ComponentConfig)
+                ComponentConfig.Parent = Container
+                local Item = CompLib[MethodName](CompLib, ComponentConfig)
+                return Item
             end
-            function SectionItems:Toggle(c) 
-                c.Parent = Container
-                local t = CompLib:Toggle(c)
-                if Expanded then SectionFrame.Size = UDim2.new(1, 0, 0, Layout.AbsoluteContentSize.Y + 55) end
-                return t
-            end
-
+            function SectionItems:Button(Conf) return AddToSection("Button", Conf) end
+            function SectionItems:Toggle(Conf) return AddToSection("Toggle", Conf) end
+            function SectionItems:Slider(Conf) return AddToSection("Slider", Conf) end
+            function SectionItems:Dropdown(Conf) return AddToSection("Dropdown", Conf) end
+            function SectionItems:Info(Conf) return AddToSection("Info", Conf) end
+            function SectionItems:Label(Conf) return AddToSection("Label", Conf) end
             return SectionItems
         end
 
