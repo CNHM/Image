@@ -706,7 +706,7 @@ end)
 
         function CompLib:Button(Config)
             local BtnFrame = Create("Frame", {
-                Parent = TabPage,
+                Parent = Config.Parent or TabPage,
                 BackgroundColor3 = DeltaXLib.Theme.Secondary,
                 Size = UDim2.new(1, 0, 0, 50),
                 Name = Config.Title .. "_Btn"
@@ -747,7 +747,7 @@ end)
 
             RealBtn.InputBegan:Connect(function(Input)
                 if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-                    if IsPlayerBusy() or IsScrolling then
+                    if DeltaXLib.IsDraggingSlider or DeltaXLib.IsDraggingUI or IsPlayerBusy() then
                         ApplyTween(BtnFrame, {BackgroundColor3 = Color3.fromRGB(50, 50, 60)}, 0.2)
                         return
                     end
@@ -767,7 +767,7 @@ end)
         function CompLib:Toggle(Config)
             local State = Config.Default or false
             local TglFrame = Create("Frame", {
-                Parent = TabPage,
+                Parent = Config.Parent or TabPage,
                 BackgroundColor3 = DeltaXLib.Theme.Secondary,
                 Size = UDim2.new(1, 0, 0, 45)
             })
@@ -811,7 +811,7 @@ end)
 
             ClickBtn.InputBegan:Connect(function(Input)
                 if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-                    if IsPlayerBusy() then
+                    if DeltaXLib.IsDraggingSlider or DeltaXLib.IsDraggingUI or IsPlayerBusy() then
                         ApplyTween(TglFrame, {BackgroundColor3 = Color3.fromRGB(50, 50, 60)}, 0.2)
                         return
                     end
@@ -838,7 +838,7 @@ end)
             local IsThisDragging = false
 
             local SliderFrame = Create("Frame", {
-                Parent = TabPage,
+                Parent = Config.Parent or TabPage,
                 BackgroundColor3 = DeltaXLib.Theme.Secondary,
                 Size = UDim2.new(1, 0, 0, 60)
             })
@@ -895,7 +895,7 @@ end)
 
             SliderFrame.InputBegan:Connect(function(Input)
                 if (Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch) and not DeltaXLib.IsDraggingSlider and not DeltaXLib.IsPromptOpen then
-                    if (IsPlayerBusy() or IsScrolling) and not IsThisDragging then
+                    if DeltaXLib.IsDraggingSlider or DeltaXLib.IsDraggingUI or IsPlayerBusy() then
                         ApplyTween(SliderFrame, {BackgroundColor3 = Color3.fromRGB(50, 50, 60)}, 0.2)
                         return
                     end
@@ -991,7 +991,7 @@ end)
 
             Header.InputBegan:Connect(function(Input)
                 if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-                    if IsPlayerBusy() or IsScrolling then
+                    if DeltaXLib.IsDraggingSlider or DeltaXLib.IsDraggingUI or IsPlayerBusy() then
                         ApplyTween(SectionFrame, {BackgroundColor3 = Color3.fromRGB(40, 40, 45)}, 0.2)
                         return
                     end
@@ -1022,7 +1022,7 @@ end)
 
         function CompLib:Input(Config)
             local InputFrame = Create("Frame", {
-                Parent = TabPage,
+                Parent = Config.Parent or TabPage,
                 BackgroundColor3 = DeltaXLib.Theme.Secondary,
                 Size = UDim2.new(1, 0, 0, 65)
             })
@@ -1064,7 +1064,7 @@ end)
             })
 
             Box.Focused:Connect(function()
-                if IsPlayerBusy() then
+                if DeltaXLib.IsDraggingSlider or DeltaXLib.IsDraggingUI or IsPlayerBusy() then
                     Box:ReleaseFocus()
                     ApplyTween(InputFrame, {BackgroundColor3 = Color3.fromRGB(50, 50, 60)}, 0.2)
                     return
@@ -1081,13 +1081,14 @@ end)
         end
         
         function CompLib:Dropdown(Config)
-            local Dropped = false
-            local DropFrame = Create("Frame", {
-                Parent = TabPage,
-                BackgroundColor3 = DeltaXLib.Theme.Secondary,
-                Size = UDim2.new(1, 0, 0, 45),
-                ClipsDescendants = true
-            })
+    local SelectedOptions = {}
+    local Expanded = false
+    local DropFrame = Create("Frame", {
+        Parent = Config.Parent or TabPage,
+        Size = UDim2.new(1, 0, 0, 50),
+        ClipsDescendants = true,
+        BackgroundColor3 = DeltaXLib.Theme.Secondary
+    })
             Create("UICorner", {Parent = DropFrame, CornerRadius = DeltaXLib.Theme.Rounded})
 
             local TopBtn = Create("TextButton", {
@@ -1129,30 +1130,28 @@ end)
                     TextSize = 12
                 })
                 OptBtn.InputBegan:Connect(function(Input)
-                if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-                    if IsPlayerBusy() or IsScrolling then return end
-                        if DeltaXLib.IsPromptOpen then return end
-                        TitleLabel.Text = Config.Title .. " : " .. opt
-                        Dropped = false
-                        ApplyTween(DropFrame, {Size = UDim2.new(1, 0, 0, 45)}, 0.3)
-                        if Config.Callback then Config.Callback(opt) end
-                    end
-                end)
+            if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
+                if IsScrolling or DeltaXLib.IsDraggingSlider then return end
+                if table.find(SelectedOptions, opt) then
+                    table.remove(SelectedOptions, table.find(SelectedOptions, opt))
+                    OptLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+                else
+                    table.insert(SelectedOptions, opt)
+                    OptLabel.TextColor3 = DeltaXLib.Theme.Accent 
+                end
+                if Config.Callback then Config.Callback(SelectedOptions) end
+            end
+        end)
             end
 
             TopBtn.InputBegan:Connect(function(Input)
-                if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-                    if IsPlayerBusy() or IsScrolling then
-                        ApplyTween(DropFrame, {BackgroundColor3 = Color3.fromRGB(50, 50, 60)}, 0.2)
-                        return
-                    end
-                    if DeltaXLib.IsPromptOpen then return end
-                    Dropped = not Dropped
-                    ApplyTween(DropFrame, {Size = UDim2.new(1, 0, 0, Dropped and (45 + #Config.Options * 30) or 45)}, 0.3)
-                    task.wait(0.3)
-                    TabPage.CanvasSize = UDim2.new(0, 0, 0, TabPage.UIListLayout.AbsoluteContentSize.Y + 20)
-                end
-            end)
+        if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
+            if IsScrolling or DeltaXLib.IsDraggingSlider then return end
+            Expanded = not Expanded
+            ApplyTween(DropFrame, {Size = Expanded and UDim2.new(1, 0, 0, #Config.Options * 40 + 55) or UDim2.new(1, 0, 0, 50)}, 0.3)
+            ApplyTween(Arrow, {Rotation = Expanded and 180 or 0}, 0.3)
+        end
+    end)
             
             TopBtn.MouseLeave:Connect(function()
                 ApplyTween(DropFrame, {BackgroundColor3 = DeltaXLib.Theme.Secondary}, 0.2)
@@ -1183,7 +1182,7 @@ end)
         function CompLib:Info(Config)
             local InfoValues = Config.Values or {}
             local InfoFrame = Create("Frame", {
-                Parent = TabPage,
+                Parent = Config.Parent or TabPage,
                 BackgroundColor3 = Color3.fromRGB(35, 35, 45),
                 Size = UDim2.new(1, 0, 0, 45),
                 Name = (Config.Title or "Info") .. "_Info",
@@ -1254,7 +1253,7 @@ end)
             })
             InteractionBtn.InputBegan:Connect(function(Input)
                 if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-                    if IsPlayerBusy() or IsScrolling then
+                    if DeltaXLib.IsDraggingSlider or DeltaXLib.IsDraggingUI or IsPlayerBusy() then
                         ApplyTween(InfoFrame, {BackgroundColor3 = Color3.fromRGB(55, 55, 65)}, 0.2)
                         return
                     end
