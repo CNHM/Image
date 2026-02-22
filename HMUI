@@ -606,6 +606,55 @@ end)
             AutomaticCanvasSize = Enum.AutomaticSize.Y,
             Name = Name
         })
+        local ScrollBar = Create("Frame", {
+            Parent = TabPage.Parent,
+            BackgroundColor3 = DeltaXLib.Theme.Secondary,
+            Position = UDim2.new(1, -8, 0, 5),
+            Size = UDim2.new(0, 4, 1, -10),
+            ZIndex = 10,
+            Visible = TabPage.Visible
+        })
+        Create("UICorner", {Parent = ScrollBar, CornerRadius = UDim.new(1, 0)})
+
+        local ScrollThumb = Create("Frame", {
+            Parent = ScrollBar,
+            BackgroundColor3 = DeltaXLib.Theme.Accent,
+            Size = UDim2.new(1, 0, 0, 50),
+            ZIndex = 11
+        })
+        Create("UICorner", {Parent = ScrollThumb, CornerRadius = UDim.new(1, 0)})
+
+        local IsScrolling = false
+        ScrollThumb.InputBegan:Connect(function(Input)
+            if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
+                IsScrolling = true
+                DeltaXLib.IsDraggingSlider = true
+                local DragStart = Input.Position.Y
+                local StartCanvas = TabPage.CanvasPosition.Y
+                
+                local MoveCon
+                MoveCon = UserInputService.InputChanged:Connect(function(MoveInput)
+                    if MoveInput.UserInputType == Enum.UserInputType.MouseMovement or MoveInput.UserInputType == Enum.UserInputType.Touch then
+                        local Delta = MoveInput.Position.Y - DragStart
+                        local Ratio = TabPage.AbsoluteCanvasSize.Y / ScrollBar.AbsoluteSize.Y
+                        TabPage.CanvasPosition = Vector2.new(0, StartCanvas + Delta * Ratio)
+                    end
+                end)
+                
+                local EndCon
+                EndCon = UserInputService.InputEnded:Connect(function(EndInput)
+                    if EndInput.UserInputType == Enum.UserInputType.MouseButton1 or EndInput.UserInputType == Enum.UserInputType.Touch then
+                        IsScrolling = false
+                        DeltaXLib.IsDraggingSlider = false
+                        MoveCon:Disconnect()
+                        EndCon:Disconnect()
+                    end
+                end)
+            end
+        end)
+        TabPage:GetPropertyChangedSignal("Visible"):Connect(function()
+            ScrollBar.Visible = TabPage.Visible
+        end)
         local IsScrolling = false
         local LastCanvasPos = TabPage.CanvasPosition
         TabPage:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
