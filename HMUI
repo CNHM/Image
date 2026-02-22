@@ -170,7 +170,7 @@ function DeltaXLib:CreateWindow(Options)
         Text = ""
     })
     MakeDraggable(MinimizedBall, MinimizedBall)
-
+    
     local MainFrame = Create("Frame", {
         Name = "MainFrame",
         Parent = ScreenGui,
@@ -182,7 +182,14 @@ function DeltaXLib:CreateWindow(Options)
     })
     Create("UICorner", {Parent = MainFrame, CornerRadius = DeltaXLib.Theme.Rounded})
     MakeDraggable(MainFrame, MainFrame)
-
+    MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    MainFrame.Size = UDim2.new(0, 0, 0, 0)
+    MainFrame.Visible = true
+    local PopOut = TweenService:Create(MainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+    Size = UDim2.new(0, 600, 0, 400)
+    })
+    PopOut:Play()
     if Config.BgImg ~= "" then
         local FullBg = Create("ImageLabel", {
             Parent = MainFrame,
@@ -452,40 +459,50 @@ function DeltaXLib:CreateWindow(Options)
         DeltaXLib.IsPromptOpen = true
         PromptMask.Visible = true
         PromptFrame.Visible = true
+        PromptFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+        PromptFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+        PromptFrame.Size = UDim2.new(0, 0, 0, 0)
         ApplyTween(PromptMask, {BackgroundTransparency = 0.5}, 0.3)
-        ApplyTween(PromptFrame, {Size = UDim2.new(0, 300, 0, 150)}, 0.4)
+        TweenService:Create(PromptFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 300, 0, 150)}):Play()
     end)
 
     PromptCancel.MouseButton1Click:Connect(function()
+        local HidePrompt = TweenService:Create(PromptFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size = UDim2.new(0, 0, 0, 0)})
         ApplyTween(PromptMask, {BackgroundTransparency = 1}, 0.3)
-        ApplyTween(PromptFrame, {Size = UDim2.new(0, 0, 0, 0)}, 0.3)
-        task.wait(0.3)
-        PromptMask.Visible = false
-        PromptFrame.Visible = false
-        DeltaXLib.IsPromptOpen = false
+        HidePrompt:Play()
+        HidePrompt.Completed:Connect(function()
+            PromptMask.Visible = false
+            PromptFrame.Visible = false
+            DeltaXLib.IsPromptOpen = false
+        end)
     end)
 
     PromptConfirm.MouseButton1Click:Connect(function()
-        ApplyTween(MainFrame, {Size = UDim2.new(0, 0, 0, 0), Position = UDim2.new(0.5, 0, 0.5, 0), BackgroundTransparency = 1}, 0.4)
-        task.wait(0.4)
+        TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size = UDim2.new(0, 0, 0, 0), BackgroundTransparency = 1}):Play()
+        task.wait(0.3)
         ScreenGui:Destroy()
     end)
 
     MinBtn.MouseButton1Click:Connect(function()
-        ApplyTween(MainFrame, {Size = UDim2.new(0, 0, 0, 0), BackgroundTransparency = 1}, 0.4)
-        task.wait(0.4)
-        MainFrame.Visible = false
-        MinimizedBall.Visible = true
-        ApplyTween(MinimizedBall, {Size = UDim2.new(0, 60, 0, 60)}, 0.4)
+        local Hide = TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size = UDim2.new(0, 0, 0, 0)})
+        Hide:Play()
+        Hide.Completed:Connect(function()
+            MainFrame.Visible = false
+            MinimizedBall.Visible = true
+            MinimizedBall.AnchorPoint = Vector2.new(0.5, 0.5)
+            MinimizedBall.Size = UDim2.new(0, 0, 0, 0)
+            TweenService:Create(MinimizedBall, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 60, 0, 60)}):Play()
+        end)
     end)
 
     BallBtn.MouseButton1Click:Connect(function()
-        ApplyTween(MinimizedBall, {Size = UDim2.new(0, 0, 0, 0)}, 0.4)
-        task.wait(0.2)
-        MinimizedBall.Visible = false
-        MainFrame.Visible = true
-        MainFrame.BackgroundTransparency = 0
-        ApplyTween(MainFrame, {Size = UDim2.new(0, 600, 0, 400)}, 0.4)
+        local BallHide = TweenService:Create(MinimizedBall, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size = UDim2.new(0, 0, 0, 0)})
+        BallHide:Play()
+        BallHide.Completed:Connect(function()
+            MinimizedBall.Visible = false
+            MainFrame.Visible = true
+            TweenService:Create(MainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 600, 0, 400)}):Play()
+        end)
     end)
 
     SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
@@ -1198,7 +1215,9 @@ end)
         end
         return CompLib
     end
-
+    MainFrame.Size = UDim2.new(0, 0, 0, 0)
+    MainFrame.Visible = true
+    TweenService:Create(MainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 600, 0, 400)}):Play()
     return DeltaXLib
 end
 
