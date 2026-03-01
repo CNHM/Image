@@ -525,8 +525,7 @@ function DeltaXLib:CreateWindow(Options)
                     if Container then
                         for _, SubItem in pairs(Container:GetChildren()) do
                             if SubItem:IsA("Frame") and SubItem:FindFirstChild("TitleLabel") then
-                                local SubTitle = string.lower(SubItem.TitleLabel.Text)
-                                if string.find(SubTitle, DeltaXLib.SearchQuery) then
+                                if string.find(string.lower(SubItem.TitleLabel.Text), DeltaXLib.SearchQuery) then
                                     SubItem.Visible = true
                                     SubItem.Parent = FirstTab
                                     if not SubItem:FindFirstChild("OldSection") then
@@ -540,8 +539,7 @@ function DeltaXLib:CreateWindow(Options)
                         end
                     end
                 elseif Component:IsA("Frame") and Component:FindFirstChild("TitleLabel") then
-                    local Title = string.lower(Component.TitleLabel.Text)
-                    if string.find(Title, DeltaXLib.SearchQuery) then
+                    if string.find(string.lower(Component.TitleLabel.Text), DeltaXLib.SearchQuery) then
                         Component.Visible = true
                         if TabPage ~= FirstTab then
                             Component.Parent = FirstTab
@@ -561,8 +559,8 @@ function DeltaXLib:CreateWindow(Options)
             local OS = Item:FindFirstChild("OldSection")
             local OT = Item:FindFirstChild("OldTab")
             if OS then
-                local Sect = ContentHolder:FindFirstChild(OS.Value, true)
-                if Sect then Item.Parent = Sect:FindFirstChild("Container") end
+                local Sect = FirstTab:FindFirstChild(OS.Value) or ContentHolder:FindFirstChild(OS.Value, true)
+                if Sect and Sect:FindFirstChild("Container") then Item.Parent = Sect.Container end
                 OS:Destroy()
             elseif OT then
                 local Target = ContentHolder:FindFirstChild(OT.Value)
