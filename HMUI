@@ -201,7 +201,35 @@ function DeltaXLib:CreateWindow(Options)
             ScaleType = Enum.ScaleType.Crop
         })
     end
+    local BorderStroke = Create("UIStroke", {
+        Parent = MainFrame,
+        Thickness = 2.5,
+        ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+        LineJoinMode = Enum.LineJoinMode.Round,
+        Transparency = 0
+    })
 
+    local BorderGradient = Create("UIGradient", {
+        Parent = BorderStroke,
+        Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromHSV(0, 0.8, 1)),
+            ColorSequenceKeypoint.new(0.2, Color3.fromHSV(0.2, 0.8, 1)),
+            ColorSequenceKeypoint.new(0.4, Color3.fromHSV(0.4, 0.8, 1)),
+            ColorSequenceKeypoint.new(0.6, Color3.fromHSV(0.6, 0.8, 1)),
+            ColorSequenceKeypoint.new(0.8, Color3.fromHSV(0.8, 0.8, 1)),
+            ColorSequenceKeypoint.new(1, Color3.fromHSV(1, 0.8, 1))
+        })
+    })
+
+    local RunService = game:GetService("RunService")
+    local RotationConnection
+    RotationConnection = RunService.RenderStepped:Connect(function(Delta)
+        if not MainFrame or not MainFrame.Parent then
+            RotationConnection:Disconnect()
+            return
+        end
+        BorderGradient.Rotation = (BorderGradient.Rotation + (120 * Delta)) % 360
+    end)
     local SideBar = Create("Frame", {
         Parent = MainFrame,
         BackgroundColor3 = DeltaXLib.Theme.Secondary,
