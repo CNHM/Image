@@ -520,14 +520,17 @@ function DeltaXLib:CreateWindow(Options)
             TabPage.Visible = (i == 1)
             for _, Component in pairs(TabPage:GetChildren()) do
                 if Component.Name:find("_Section") then
-                    Component.Visible = false
                     local Container = Component:FindFirstChild("Container")
+                    local HasMatchInSection = false
+
                     if Container then
                         for _, SubItem in pairs(Container:GetChildren()) do
                             if SubItem:IsA("Frame") and SubItem:FindFirstChild("TitleLabel") then
-                                if string.find(string.lower(SubItem.TitleLabel.Text), DeltaXLib.SearchQuery) then
+                                local SubTitle = string.lower(SubItem.TitleLabel.Text)
+                                if string.find(SubTitle, DeltaXLib.SearchQuery) then
                                     SubItem.Visible = true
                                     SubItem.Parent = FirstTab
+                                    HasMatchInSection = true
                                     if not SubItem:FindFirstChild("OldSection") then
                                         local Tag = Instance.new("StringValue", SubItem)
                                         Tag.Name = "OldSection"; Tag.Value = Component.Name
@@ -538,8 +541,11 @@ function DeltaXLib:CreateWindow(Options)
                             end
                         end
                     end
+                    Component.Visible = false 
+
                 elseif Component:IsA("Frame") and Component:FindFirstChild("TitleLabel") then
-                    if string.find(string.lower(Component.TitleLabel.Text), DeltaXLib.SearchQuery) then
+                    local Title = string.lower(Component.TitleLabel.Text)
+                    if string.find(Title, DeltaXLib.SearchQuery) then
                         Component.Visible = true
                         if TabPage ~= FirstTab then
                             Component.Parent = FirstTab
@@ -549,7 +555,7 @@ function DeltaXLib:CreateWindow(Options)
                             end
                         end
                     else
-                        Component.Visible = false
+                        Component.Visible = false 
                     end
                 end
             end
