@@ -514,21 +514,40 @@ function DeltaXLib:CreateWindow(Options)
     table.sort(AllTabs, function(a, b) return a.Name < b.Name end)
     local FirstTab = AllTabs[1]
     if not FirstTab then return end
+
     if DeltaXLib.SearchQuery ~= "" then
         for i, TabPage in ipairs(AllTabs) do
             TabPage.Visible = (i == 1)
             for _, Component in pairs(TabPage:GetChildren()) do
-                if Component:IsA("Frame") and Component:FindFirstChild("TitleLabel") then
+                if Component.Name:find("_Section") then
+                    Component.Visible = false
+                    local Container = Component:FindFirstChild("Container")
+                    if Container then
+                        for _, SubItem in pairs(Container:GetChildren()) do
+                            if SubItem:IsA("Frame") and SubItem:FindFirstChild("TitleLabel") then
+                                local SubTitle = string.lower(SubItem.TitleLabel.Text)
+                                if string.find(SubTitle, DeltaXLib.SearchQuery) then
+                                    SubItem.Visible = true
+                                    SubItem.Parent = FirstTab
+                                    if not SubItem:FindFirstChild("OldSection") then
+                                        local Tag = Instance.new("StringValue", SubItem)
+                                        Tag.Name = "OldSection"; Tag.Value = Component.Name
+                                    end
+                                else
+                                    SubItem.Visible = false
+                                end
+                            end
+                        end
+                    end
+                elseif Component:IsA("Frame") and Component:FindFirstChild("TitleLabel") then
                     local Title = string.lower(Component.TitleLabel.Text)
                     if string.find(Title, DeltaXLib.SearchQuery) then
                         Component.Visible = true
                         if TabPage ~= FirstTab then
                             Component.Parent = FirstTab
-                            if not Component:FindFirstChild("OriginalTab") then
-                                local Tag = Instance.new("StringValue")
-                                Tag.Name = "OriginalTab"
-                                Tag.Value = TabPage.Name
-                                Tag.Parent = Component
+                            if not Component:FindFirstChild("OldTab") then
+                                local Tag = Instance.new("StringValue", Component)
+                                Tag.Name = "OldTab"; Tag.Value = TabPage.Name
                             end
                         end
                     else
@@ -537,38 +556,28 @@ function DeltaXLib:CreateWindow(Options)
                 end
             end
         end
-        for _, v in pairs(TabContainer:GetChildren()) do
-            if v:IsA("TextButton") then
-                if string.find(v.Name, FirstTab.Name) then
-                    ApplyTween(v, {TextColor3 = DeltaXLib.Theme.Accent, BackgroundColor3 = Color3.fromRGB(40, 40, 55)}, 0.2)
-                    v.Visible = true
-                else
-                    v.Visible = false
-                end
-            end
-        end
     else
-        for _, Component in pairs(FirstTab:GetChildren()) do
-            local Tag = Component:FindFirstChild("OriginalTab")
-            if Tag then
-                local OriginalTabPage = ContentHolder:FindFirstChild(Tag.Value)
-                if OriginalTabPage then Component.Parent = OriginalTabPage end
-                Tag:Destroy()
+        -- 恢复逻辑
+        for _, Item in pairs(FirstTab:GetChildren()) do
+            local OS = Item:FindFirstChild("OldSection")
+            local OT = Item:FindFirstChild("OldTab")
+            if OS then
+                local Sect = TabPage:FindFirstChild(OS.Value) or ContentHolder:FindFirstChild(OS.Value, true)
+                if Sect then Item.Parent = Sect:FindFirstChild("Container") end
+                OS:Destroy()
+            elseif OT then
+                local Target = ContentHolder:FindFirstChild(OT.Value)
+                if Target then Item.Parent = Target end
+                OT:Destroy()
             end
         end
-        for i, TabPage in ipairs(AllTabs) do
+        for _, TabPage in ipairs(AllTabs) do
             TabPage.Visible = (TabPage == DeltaXLib.CurrentTab)
-            for _, Component in pairs(TabPage:GetChildren()) do
-                if Component:IsA("Frame") then Component.Visible = true end
-            end
-        end
-        for _, v in pairs(TabContainer:GetChildren()) do
-            if v:IsA("TextButton") then
-                v.Visible = true
-                if DeltaXLib.CurrentTab and string.find(v.Name, DeltaXLib.CurrentTab.Name) then
-                    ApplyTween(v, {TextColor3 = DeltaXLib.Theme.Accent, BackgroundColor3 = Color3.fromRGB(40, 40, 55)}, 0.2)
-                else
-                    ApplyTween(v, {TextColor3 = DeltaXLib.Theme.TextDark, BackgroundColor3 = DeltaXLib.Theme.Secondary}, 0.2)
+            for _, Comp in pairs(TabPage:GetChildren()) do 
+                Comp.Visible = true 
+                if Comp.Name:find("_Section") then
+                    local Con = Comp:FindFirstChild("Container")
+                    if Con then for _, s in pairs(Con:GetChildren()) do s.Visible = true end end
                 end
             end
         end
@@ -1196,6 +1205,32 @@ end)
             })
             return Lab
         end
+        
+        function CompLib:Divide(Config)
+    local DivideFrame = Create("Frame", {
+        Parent = Config.Parent or TabPage,
+        Size = UDim2.new(1, 0, 0, 10),
+        BackgroundTransparency = 1,
+        Name = "Divider"
+    })
+    local Line = Create("Frame", {
+        Parent = DivideFrame,
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Position = UDim2.new(0.5, 0, 0.5, 0),
+        Size = UDim2.new(0.9, 0, 0, 1),
+        BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+        BorderSizePixel = 0
+    })
+    Create("UIGradient", {
+        Parent = Line,
+        Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 1),
+            NumberSequenceKeypoint.new(0.5, 0.2),
+            NumberSequenceKeypoint.new(1, 1)
+        })
+    })
+    return DivideFrame
+end
         function CompLib:Info(Config)
             local InfoValues = Config.Values or {}
             local InfoFrame = Create("Frame", {
