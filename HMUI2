@@ -1,0 +1,1080 @@
+local DeltaX = {}
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
+local Theme = {
+    Background = Color3.fromRGB(13, 13, 23),
+    SecondaryBackground = Color3.fromRGB(19, 19, 34),
+    TertiaryBackground = Color3.fromRGB(26, 26, 46),
+    QuaternaryBackground = Color3.fromRGB(32, 32, 56),
+    Accent = Color3.fromRGB(99, 102, 241),
+    AccentHover = Color3.fromRGB(124, 127, 255),
+    AccentDark = Color3.fromRGB(67, 70, 200),
+    AccentGlow = Color3.fromRGB(99, 102, 241),
+    TextPrimary = Color3.fromRGB(238, 238, 255),
+    TextSecondary = Color3.fromRGB(148, 148, 180),
+    TextDisabled = Color3.fromRGB(72, 72, 100),
+    TextAccent = Color3.fromRGB(167, 169, 255),
+    Success = Color3.fromRGB(52, 199, 123),
+    Warning = Color3.fromRGB(255, 182, 30),
+    Danger = Color3.fromRGB(239, 68, 68),
+    Border = Color3.fromRGB(42, 42, 70),
+    BorderAccent = Color3.fromRGB(80, 80, 140),
+    Shadow = Color3.fromRGB(0, 0, 0),
+    TabActive = Color3.fromRGB(99, 102, 241),
+    TabInactive = Color3.fromRGB(22, 22, 40),
+    TabHover = Color3.fromRGB(32, 32, 58),
+    ToggleOn = Color3.fromRGB(52, 199, 123),
+    ToggleOff = Color3.fromRGB(52, 52, 78),
+    ToggleKnob = Color3.fromRGB(240, 240, 255),
+    SliderFill = Color3.fromRGB(99, 102, 241),
+    SliderBackground = Color3.fromRGB(32, 32, 56),
+    SliderKnob = Color3.fromRGB(220, 220, 255),
+    InputBackground = Color3.fromRGB(16, 16, 30),
+    InputFocused = Color3.fromRGB(22, 22, 42),
+    DropdownBackground = Color3.fromRGB(16, 16, 28),
+    DropdownItem = Color3.fromRGB(24, 24, 44),
+    NotificationBackground = Color3.fromRGB(20, 20, 36),
+    SectionBackground = Color3.fromRGB(16, 16, 30),
+    SectionBorder = Color3.fromRGB(55, 55, 90),
+    MiniBallColor = Color3.fromRGB(99, 102, 241),
+    MiniBallBorder = Color3.fromRGB(124, 127, 255),
+    HeaderGradientStart = Color3.fromRGB(99, 102, 241),
+    HeaderGradientEnd = Color3.fromRGB(139, 92, 246),
+    ScrollBar = Color3.fromRGB(70, 70, 120),
+    KeybindBackground = Color3.fromRGB(20, 20, 36),
+    ColorPickerBackground = Color3.fromRGB(16, 16, 28),
+}
+local TweenFast = TweenInfo.new(0.18, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+local TweenMedium = TweenInfo.new(0.32, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+local TweenSlow = TweenInfo.new(0.50, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+local TweenSpring = TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+local TweenBounce = TweenInfo.new(0.55, Enum.EasingStyle.Bounce, Enum.EasingDirection.Out)
+local TweenElastic = TweenInfo.new(0.60, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out)
+local TweenLinear = TweenInfo.new(0.10, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+local TweenSine = TweenInfo.new(0.28, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+local function Tween(instance, props, info)
+    local tw = TweenService:Create(instance, info or TweenFast, props)
+    tw:Play()
+    return tw
+end
+local function MakeCorner(parent, radius)
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = radius or UDim.new(0, 12)
+    corner.Parent = parent
+    return corner
+end
+local function MakeStroke(parent, color, thickness, mode)
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = color or Theme.Border
+    stroke.Thickness = thickness or 1
+    stroke.ApplyStrokeMode = mode or Enum.ApplyStrokeMode.Border
+    stroke.Parent = parent
+    return stroke
+end
+local function MakePadding(parent, top, bottom, left, right)
+    local pad = Instance.new("UIPadding")
+    pad.PaddingTop = UDim.new(0, top or 8)
+    pad.PaddingBottom = UDim.new(0, bottom or 8)
+    pad.PaddingLeft = UDim.new(0, left or 8)
+    pad.PaddingRight = UDim.new(0, right or 8)
+    pad.Parent = parent
+    return pad
+end
+local function MakeListLayout(parent, direction, spacing, halign, valign)
+    local list = Instance.new("UIListLayout")
+    list.FillDirection = direction or Enum.FillDirection.Vertical
+    list.Padding = UDim.new(0, spacing or 6)
+    list.HorizontalAlignment = halign or Enum.HorizontalAlignment.Left
+    list.VerticalAlignment = valign or Enum.VerticalAlignment.Top
+    list.SortOrder = Enum.SortOrder.LayoutOrder
+    list.Parent = parent
+    return list
+end
+local function MakeGradient(parent, colors, rotation)
+    local grad = Instance.new("UIGradient")
+    grad.Color = colors
+    grad.Rotation = rotation or 0
+    grad.Parent = parent
+    return grad
+end
+local function CreateFrame(parent, size, pos, color, zindex)
+    local f = Instance.new("Frame")
+    f.Size = size or UDim2.new(1, 0, 1, 0)
+    f.Position = pos or UDim2.new(0, 0, 0, 0)
+    f.BackgroundColor3 = color or Theme.Background
+    f.BorderSizePixel = 0
+    f.ZIndex = zindex or 1
+    f.Parent = parent
+    return f
+end
+local function CreateRoundFrame(parent, size, pos, color, radius, zindex)
+    local f = CreateFrame(parent, size, pos, color, zindex)
+    MakeCorner(f, radius or UDim.new(0, 12))
+    return f
+end
+local function CreateLabel(parent, text, size, pos, color, font, tsize, align, zindex)
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = size or UDim2.new(1, 0, 0, 20)
+    lbl.Position = pos or UDim2.new(0, 0, 0, 0)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = text or ""
+    lbl.TextColor3 = color or Theme.TextPrimary
+    lbl.Font = font or Enum.Font.GothamBold
+    lbl.TextSize = tsize or 14
+    lbl.TextXAlignment = align or Enum.TextXAlignment.Left
+    lbl.TextTruncate = Enum.TextTruncate.AtEnd
+    lbl.ZIndex = zindex or 2
+    lbl.Parent = parent
+    return lbl
+end
+local function CreateImageLabel(parent, image, size, pos, color, zindex)
+    local img = Instance.new("ImageLabel")
+    img.Size = size or UDim2.new(0, 20, 0, 20)
+    img.Position = pos or UDim2.new(0, 0, 0, 0)
+    img.BackgroundTransparency = 1
+    img.Image = image or ""
+    img.ImageColor3 = color or Color3.fromRGB(255, 255, 255)
+    img.ScaleType = Enum.ScaleType.Fit
+    img.ZIndex = zindex or 2
+    img.Parent = parent
+    return img
+end
+local function CreateButton(parent, size, pos, color, zindex)
+    local btn = Instance.new("TextButton")
+    btn.Size = size or UDim2.new(1, 0, 1, 0)
+    btn.Position = pos or UDim2.new(0, 0, 0, 0)
+    btn.BackgroundTransparency = 1
+    btn.Text = ""
+    btn.ZIndex = zindex or 3
+    btn.Parent = parent
+    return btn
+end
+local function MakeDraggable(frame, handle)
+    local dragging = false
+    local dragInput = nil
+    local dragStart = nil
+    local startPos = nil
+    handle = handle or frame
+    handle.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+    handle.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            dragInput = input
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            local newPos = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+            Tween(frame, {Position = newPos}, TweenFast)
+        end
+    end)
+end
+local NotificationContainer = nil
+local function InitNotificationSystem(screenGui)
+    NotificationContainer = Instance.new("Frame")
+    NotificationContainer.Name = "DeltaX_Notifications"
+    NotificationContainer.Size = UDim2.new(0, 330, 1, -20)
+    NotificationContainer.Position = UDim2.new(1, -340, 0, 10)
+    NotificationContainer.BackgroundTransparency = 1
+    NotificationContainer.ZIndex = 200
+    NotificationContainer.Parent = screenGui
+    local notifList = MakeListLayout(NotificationContainer, Enum.FillDirection.Vertical, 8)
+    notifList.VerticalAlignment = Enum.VerticalAlignment.Bottom
+    notifList.HorizontalAlignment = Enum.HorizontalAlignment.Right
+    local notifPad = Instance.new("UIPadding")
+    notifPad.PaddingBottom = UDim.new(0, 16)
+    notifPad.Parent = NotificationContainer
+end
+local function FireNotification(title, body, notifKind, holdTime)
+    holdTime = holdTime or 4.5
+    notifKind = notifKind or "信息"
+    local barColor = Theme.Accent
+    if notifKind == "成功" then barColor = Theme.Success
+    elseif notifKind == "警告" then barColor = Theme.Warning
+    elseif notifKind == "错误" then barColor = Theme.Danger
+    elseif notifKind == "信息" then barColor = Theme.Accent end
+    local notifRoot = CreateRoundFrame(NotificationContainer, UDim2.new(1, 0, 0, 0), UDim2.new(0, 0, 0, 0), Theme.NotificationBackground, UDim.new(0, 14))
+    notifRoot.ZIndex = 201
+    notifRoot.ClipsDescendants = true
+    MakeStroke(notifRoot, barColor, 1.2)
+    local sideBar = CreateRoundFrame(notifRoot, UDim2.new(0, 5, 1, 0), UDim2.new(0, 0, 0, 0), barColor, UDim.new(0, 14))
+    sideBar.ZIndex = 202
+    local sideBarFix = CreateFrame(notifRoot, UDim2.new(0, 5, 1, 0), UDim2.new(0, 5, 0, 0), barColor, 202)
+    local kindLabel = CreateLabel(notifRoot, "【" .. notifKind .. "】 " .. title, UDim2.new(1, -20, 0, 20), UDim2.new(0, 16, 0, 10), barColor, Enum.Font.GothamBold, 14, Enum.TextXAlignment.Left, 203)
+    local bodyLabel = CreateLabel(notifRoot, body, UDim2.new(1, -20, 0, 38), UDim2.new(0, 16, 0, 32), Theme.TextSecondary, Enum.Font.Gotham, 13, Enum.TextXAlignment.Left, 203)
+    bodyLabel.TextWrapped = true
+    local progressTrack = CreateRoundFrame(notifRoot, UDim2.new(1, -24, 0, 4), UDim2.new(0, 12, 1, -10), Theme.TertiaryBackground, UDim.new(1, 0))
+    progressTrack.ZIndex = 202
+    local progressFill = CreateRoundFrame(progressTrack, UDim2.new(1, 0, 1, 0), UDim2.new(0, 0, 0, 0), barColor, UDim.new(1, 0))
+    progressFill.ZIndex = 203
+    Tween(notifRoot, {Size = UDim2.new(1, 0, 0, 82)}, TweenSpring)
+    task.spawn(function()
+        local startTime = tick()
+        while tick() - startTime < holdTime do
+            local elapsed = tick() - startTime
+            local remaining = 1 - (elapsed / holdTime)
+            progressFill.Size = UDim2.new(remaining, 0, 1, 0)
+            RunService.Heartbeat:Wait()
+        end
+    end)
+    task.delay(holdTime, function()
+        Tween(notifRoot, {Size = UDim2.new(1, 0, 0, 0), BackgroundTransparency = 1}, TweenMedium)
+        task.wait(0.36)
+        notifRoot:Destroy()
+    end)
+end
+function DeltaX:CreateWindow(cfg)
+    cfg = cfg or {}
+    local WinTitle = cfg.Title or "Delta X"
+    local WinSubtitle = cfg.Subtitle or "专业注入框架 v2.0"
+    local WinIcon = cfg.Icon or "rbxassetid://7072706620"
+    local WinBG = cfg.BackgroundImage or ""
+    local WinFooter = cfg.Footer or "Delta X 注入器  ©  2024  保留所有权利"
+    local WinMinIcon = cfg.MinimizeIcon or "rbxassetid://7072718964"
+    local WinCloseIcon = cfg.CloseIcon or "rbxassetid://7072725342"
+    local WinW = cfg.Width or 600
+    local WinH = cfg.Height or 460
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "DeltaXLibUI"
+    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.DisplayOrder = 998
+    local guiOk = pcall(function() ScreenGui.Parent = CoreGui end)
+    if not guiOk or not ScreenGui.Parent then
+        ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+    end
+    InitNotificationSystem(ScreenGui)
+    local ShadowOuter = CreateRoundFrame(ScreenGui, UDim2.new(0, WinW + 40, 0, WinH + 40), UDim2.new(0.5, -(WinW + 40) / 2, 0.5, -(WinH + 40) / 2), Color3.fromRGB(0, 0, 0), UDim.new(0, 22))
+    ShadowOuter.BackgroundTransparency = 0.65
+    ShadowOuter.ZIndex = 0
+    local ShadowInner = CreateRoundFrame(ScreenGui, UDim2.new(0, WinW + 20, 0, WinH + 20), UDim2.new(0.5, -(WinW + 20) / 2, 0.5, -(WinH + 20) / 2), Color3.fromRGB(0, 0, 0), UDim.new(0, 18))
+    ShadowInner.BackgroundTransparency = 0.78
+    ShadowInner.ZIndex = 0
+    local MainFrame = CreateRoundFrame(ScreenGui, UDim2.new(0, WinW, 0, WinH), UDim2.new(0.5, -WinW / 2, 0.5, -WinH / 2), Theme.Background, UDim.new(0, 16))
+    MainFrame.ClipsDescendants = false
+    MainFrame.ZIndex = 1
+    MakeStroke(MainFrame, Theme.Border, 1.5)
+    if WinBG ~= "" then
+        local bgImg = CreateImageLabel(MainFrame, WinBG, UDim2.new(1, 0, 1, 0), UDim2.new(0, 0, 0, 0), Color3.fromRGB(255, 255, 255), 0)
+        bgImg.ImageTransparency = 0.88
+        bgImg.ScaleType = Enum.ScaleType.Crop
+        MakeCorner(bgImg, UDim.new(0, 16))
+    end
+    local HeaderFrame = CreateRoundFrame(MainFrame, UDim2.new(1, 0, 0, 60), UDim2.new(0, 0, 0, 0), Theme.SecondaryBackground, UDim.new(0, 16))
+    HeaderFrame.ZIndex = 3
+    MakeGradient(HeaderFrame, ColorSequence.new({ColorSequenceKeypoint.new(0, Theme.HeaderGradientStart), ColorSequenceKeypoint.new(1, Theme.HeaderGradientEnd)}), 95)
+    local HeaderFix = CreateFrame(MainFrame, UDim2.new(1, 0, 0, 16), UDim2.new(0, 0, 0, 46), Theme.SecondaryBackground, 3)
+    MakeGradient(HeaderFix, ColorSequence.new({ColorSequenceKeypoint.new(0, Theme.HeaderGradientStart), ColorSequenceKeypoint.new(1, Theme.HeaderGradientEnd)}), 95)
+    local HeaderGlowLine = CreateFrame(MainFrame, UDim2.new(1, 0, 0, 2), UDim2.new(0, 0, 0, 60), Theme.Accent, 4)
+    HeaderGlowLine.BackgroundTransparency = 0.5
+    local WinIconImg = CreateImageLabel(HeaderFrame, WinIcon, UDim2.new(0, 36, 0, 36), UDim2.new(0, 14, 0.5, -18), Color3.fromRGB(255, 255, 255), 5)
+    local TitleGroup = CreateFrame(HeaderFrame, UDim2.new(1, -130, 1, 0), UDim2.new(0, 58, 0, 0), nil, 5)
+    TitleGroup.BackgroundTransparency = 1
+    local WinTitleLabel = CreateLabel(TitleGroup, WinTitle, UDim2.new(1, 0, 0, 24), UDim2.new(0, 0, 0, 8), Color3.fromRGB(255, 255, 255), Enum.Font.GothamBold, 20, Enum.TextXAlignment.Left, 6)
+    local WinSubLabel = CreateLabel(TitleGroup, WinSubtitle, UDim2.new(1, 0, 0, 16), UDim2.new(0, 0, 0, 33), Color3.fromRGB(210, 210, 255), Enum.Font.Gotham, 12, Enum.TextXAlignment.Left, 6)
+    WinSubLabel.TextTransparency = 0.2
+    local BtnHolder = CreateFrame(HeaderFrame, UDim2.new(0, 76, 0, 34), UDim2.new(1, -84, 0.5, -17), nil, 5)
+    BtnHolder.BackgroundTransparency = 1
+    MakeListLayout(BtnHolder, Enum.FillDirection.Horizontal, 8)
+    local MinBtn = CreateRoundFrame(BtnHolder, UDim2.new(0, 34, 0, 34), UDim2.new(0, 0, 0, 0), Color3.fromRGB(30, 30, 60), UDim.new(0, 10))
+    MinBtn.ZIndex = 6
+    MakeStroke(MinBtn, Color3.fromRGB(60, 60, 100), 1)
+    local MinBtnImg = CreateImageLabel(MinBtn, WinMinIcon, UDim2.new(0, 18, 0, 18), UDim2.new(0.5, -9, 0.5, -9), Color3.fromRGB(200, 200, 255), 7)
+    local MinBtnDetect = CreateButton(MinBtn, UDim2.new(1, 0, 1, 0), UDim2.new(0, 0, 0, 0), nil, 8)
+    local CloseBtn = CreateRoundFrame(BtnHolder, UDim2.new(0, 34, 0, 34), UDim2.new(0, 0, 0, 0), Color3.fromRGB(30, 30, 60), UDim.new(0, 10))
+    CloseBtn.ZIndex = 6
+    MakeStroke(CloseBtn, Color3.fromRGB(60, 60, 100), 1)
+    local CloseBtnImg = CreateImageLabel(CloseBtn, WinCloseIcon, UDim2.new(0, 18, 0, 18), UDim2.new(0.5, -9, 0.5, -9), Color3.fromRGB(200, 200, 255), 7)
+    local CloseBtnDetect = CreateButton(CloseBtn, UDim2.new(1, 0, 1, 0), UDim2.new(0, 0, 0, 0), nil, 8)
+    local MinBall = CreateRoundFrame(ScreenGui, UDim2.new(0, 56, 0, 56), UDim2.new(0.5, -28, 0.5, -28), Theme.MiniBallColor, UDim.new(1, 0))
+    MinBall.ZIndex = 100
+    MinBall.Visible = false
+    MakeStroke(MinBall, Theme.MiniBallBorder, 2.5)
+    local MinBallPulse = CreateRoundFrame(MinBall, UDim2.new(1, 0, 1, 0), UDim2.new(0, 0, 0, 0), Theme.MiniBallColor, UDim.new(1, 0))
+    MinBallPulse.BackgroundTransparency = 0.6
+    MinBallPulse.ZIndex = 99
+    local MinBallIcon = CreateImageLabel(MinBall, WinIcon, UDim2.new(0, 32, 0, 32), UDim2.new(0.5, -16, 0.5, -16), Color3.fromRGB(255, 255, 255), 101)
+    local MinBallDetect = CreateButton(MinBall, UDim2.new(1, 0, 1, 0), UDim2.new(0, 0, 0, 0), nil, 102)
+    MakeDraggable(MinBall, MinBall)
+    local pulseConn = nil
+    local isWindowOpen = true
+    MinBtnDetect.MouseEnter:Connect(function()
+        Tween(MinBtn, {BackgroundColor3 = Color3.fromRGB(180, 150, 0)}, TweenFast)
+        Tween(MinBtnImg, {ImageColor3 = Color3.fromRGB(255, 220, 50)}, TweenFast)
+    end)
+    MinBtnDetect.MouseLeave:Connect(function()
+        Tween(MinBtn, {BackgroundColor3 = Color3.fromRGB(30, 30, 60)}, TweenFast)
+        Tween(MinBtnImg, {ImageColor3 = Color3.fromRGB(200, 200, 255)}, TweenFast)
+    end)
+    MinBtnDetect.MouseButton1Click:Connect(function()
+        isWindowOpen = false
+        Tween(MainFrame, {Size = UDim2.new(0, WinW, 0, 0), BackgroundTransparency = 0.3}, TweenMedium)
+        Tween(ShadowOuter, {BackgroundTransparency = 1}, TweenMedium)
+        Tween(ShadowInner, {BackgroundTransparency = 1}, TweenMedium)
+        task.wait(0.34)
+        MainFrame.Visible = false
+        ShadowOuter.Visible = false
+        ShadowInner.Visible = false
+        MinBall.Visible = true
+        MinBall.BackgroundTransparency = 1
+        MinBallPulse.BackgroundTransparency = 1
+        MinBall.Size = UDim2.new(0, 10, 0, 10)
+        MinBall.Position = UDim2.new(0.5, -5, 0.5, -5)
+        Tween(MinBall, {BackgroundTransparency = 0, Size = UDim2.new(0, 56, 0, 56), Position = UDim2.new(0.5, -28, 0.5, -28)}, TweenSpring)
+        Tween(MinBallPulse, {BackgroundTransparency = 0.6}, TweenSlow)
+        pulseConn = RunService.Heartbeat:Connect(function()
+            local t = tick() % 2
+            local alpha = math.sin(t * math.pi)
+            MinBallPulse.BackgroundTransparency = 0.4 + alpha * 0.4
+        end)
+    end)
+    MinBallDetect.MouseButton1Click:Connect(function()
+        if pulseConn then pulseConn:Disconnect() pulseConn = nil end
+        isWindowOpen = true
+        Tween(MinBall, {Size = UDim2.new(0, 0, 0, 0), BackgroundTransparency = 1}, TweenMedium)
+        task.wait(0.34)
+        MinBall.Visible = false
+        MinBall.Size = UDim2.new(0, 56, 0, 56)
+        MainFrame.Visible = true
+        ShadowOuter.Visible = true
+        ShadowInner.Visible = true
+        MainFrame.Size = UDim2.new(0, WinW, 0, 0)
+        MainFrame.BackgroundTransparency = 0.3
+        ShadowOuter.BackgroundTransparency = 1
+        ShadowInner.BackgroundTransparency = 1
+        Tween(MainFrame, {Size = UDim2.new(0, WinW, 0, WinH), BackgroundTransparency = 0}, TweenSpring)
+        Tween(ShadowOuter, {BackgroundTransparency = 0.65}, TweenMedium)
+        Tween(ShadowInner, {BackgroundTransparency = 0.78}, TweenMedium)
+    end)
+    CloseBtnDetect.MouseEnter:Connect(function()
+        Tween(CloseBtn, {BackgroundColor3 = Color3.fromRGB(180, 30, 30)}, TweenFast)
+        Tween(CloseBtnImg, {ImageColor3 = Color3.fromRGB(255, 180, 180)}, TweenFast)
+    end)
+    CloseBtnDetect.MouseLeave:Connect(function()
+        Tween(CloseBtn, {BackgroundColor3 = Color3.fromRGB(30, 30, 60)}, TweenFast)
+        Tween(CloseBtnImg, {ImageColor3 = Color3.fromRGB(200, 200, 255)}, TweenFast)
+    end)
+    CloseBtnDetect.MouseButton1Click:Connect(function()
+        if pulseConn then pulseConn:Disconnect() pulseConn = nil end
+        Tween(MainFrame, {Size = UDim2.new(0, WinW, 0, 0), BackgroundTransparency = 1}, TweenMedium)
+        Tween(ShadowOuter, {BackgroundTransparency = 1}, TweenMedium)
+        Tween(ShadowInner, {BackgroundTransparency = 1}, TweenMedium)
+        task.wait(0.52)
+        ScreenGui:Destroy()
+    end)
+    MakeDraggable(MainFrame, HeaderFrame)
+    local SideNav = CreateRoundFrame(MainFrame, UDim2.new(0, 148, 1, -88), UDim2.new(0, 8, 0, 68), Theme.SecondaryBackground, UDim.new(0, 14))
+    SideNav.ZIndex = 2
+    MakeStroke(SideNav, Theme.Border, 1)
+    MakePadding(SideNav, 8, 8, 6, 6)
+    local TabScroll = Instance.new("ScrollingFrame")
+    TabScroll.Size = UDim2.new(1, 0, 1, 0)
+    TabScroll.BackgroundTransparency = 1
+    TabScroll.ScrollBarThickness = 2
+    TabScroll.ScrollBarImageColor3 = Theme.ScrollBar
+    TabScroll.BorderSizePixel = 0
+    TabScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+    TabScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    TabScroll.ScrollingDirection = Enum.ScrollingDirection.Y
+    TabScroll.ZIndex = 3
+    TabScroll.Parent = SideNav
+    MakeListLayout(TabScroll, Enum.FillDirection.Vertical, 5)
+    local ContentArea = Instance.new("Frame")
+    ContentArea.Size = UDim2.new(1, -168, 1, -88)
+    ContentArea.Position = UDim2.new(0, 164, 0, 68)
+    ContentArea.BackgroundTransparency = 1
+    ContentArea.ClipsDescendants = true
+    ContentArea.ZIndex = 2
+    ContentArea.Parent = MainFrame
+    local FooterStrip = CreateRoundFrame(MainFrame, UDim2.new(1, 0, 0, 24), UDim2.new(0, 0, 1, -24), Theme.SecondaryBackground, UDim.new(0, 16))
+    FooterStrip.ZIndex = 3
+    local FooterFix = CreateFrame(MainFrame, UDim2.new(1, 0, 0, 12), UDim2.new(0, 0, 1, -24), Theme.SecondaryBackground, 3)
+    local FooterDivider = CreateFrame(MainFrame, UDim2.new(1, -20, 0, 1), UDim2.new(0, 10, 1, -25), Theme.Border, 4)
+    local FooterTxt = CreateLabel(FooterStrip, WinFooter, UDim2.new(1, -20, 1, 0), UDim2.new(0, 10, 0, 0), Theme.TextDisabled, Enum.Font.Gotham, 11, Enum.TextXAlignment.Center, 4)
+    local ActiveTab = nil
+    local ActiveContent = nil
+    MainFrame.Size = UDim2.new(0, WinW, 0, 0)
+    MainFrame.BackgroundTransparency = 0.5
+    ShadowOuter.BackgroundTransparency = 1
+    ShadowInner.BackgroundTransparency = 1
+    Tween(MainFrame, {Size = UDim2.new(0, WinW, 0, WinH), BackgroundTransparency = 0}, TweenSpring)
+    Tween(ShadowOuter, {BackgroundTransparency = 0.65}, TweenMedium)
+    Tween(ShadowInner, {BackgroundTransparency = 0.78}, TweenMedium)
+    local Win = {}
+    Win.ScreenGui = ScreenGui
+    Win.Notify = FireNotification
+    function Win:CreateTab(tabCfg)
+        tabCfg = tabCfg or {}
+        local TName = tabCfg.Title or "选项卡"
+        local TIcon = tabCfg.Icon or "rbxassetid://7072706620"
+        local TabBtn = CreateRoundFrame(TabScroll, UDim2.new(1, -2, 0, 42), UDim2.new(0, 0, 0, 0), Theme.TabInactive, UDim.new(0, 12))
+        TabBtn.ZIndex = 4
+        MakeStroke(TabBtn, Theme.Border, 0.8)
+        local TabBtnDetect = CreateButton(TabBtn, UDim2.new(1, 0, 1, 0), UDim2.new(0, 0, 0, 0), nil, 6)
+        local TabActiveBar = CreateRoundFrame(TabBtn, UDim2.new(0, 4, 0.55, 0), UDim2.new(0, 0, 0.22, 0), Theme.Accent, UDim.new(1, 0))
+        TabActiveBar.BackgroundTransparency = 1
+        TabActiveBar.ZIndex = 5
+        local TabIconImg = CreateImageLabel(TabBtn, TIcon, UDim2.new(0, 20, 0, 20), UDim2.new(0, 12, 0.5, -10), Theme.TextSecondary, 5)
+        local TabNameLabel = CreateLabel(TabBtn, TName, UDim2.new(1, -44, 1, 0), UDim2.new(0, 38, 0, 0), Theme.TextSecondary, Enum.Font.GothamBold, 13, Enum.TextXAlignment.Left, 5)
+        local TabContent = Instance.new("ScrollingFrame")
+        TabContent.Size = UDim2.new(1, 0, 1, 0)
+        TabContent.BackgroundTransparency = 1
+        TabContent.ScrollBarThickness = 3
+        TabContent.ScrollBarImageColor3 = Theme.Accent
+        TabContent.BorderSizePixel = 0
+        TabContent.CanvasSize = UDim2.new(0, 0, 0, 0)
+        TabContent.AutomaticCanvasSize = Enum.AutomaticSize.Y
+        TabContent.Visible = false
+        TabContent.ZIndex = 2
+        TabContent.Parent = ContentArea
+        MakePadding(TabContent, 6, 10, 4, 8)
+        MakeListLayout(TabContent, Enum.FillDirection.Vertical, 7)
+        local function SelectThisTab()
+            if ActiveTab and ActiveTab ~= TabBtn then
+                Tween(ActiveTab, {BackgroundColor3 = Theme.TabInactive}, TweenFast)
+                local oldBar = ActiveTab:FindFirstChild("Frame")
+                if oldBar then Tween(oldBar, {BackgroundTransparency = 1}, TweenFast) end
+                local oldLbl = ActiveTab:FindFirstChildOfClass("TextLabel")
+                if oldLbl then Tween(oldLbl, {TextColor3 = Theme.TextSecondary}, TweenFast) end
+                local oldIcon = ActiveTab:FindFirstChildOfClass("ImageLabel")
+                if oldIcon then Tween(oldIcon, {ImageColor3 = Theme.TextSecondary}, TweenFast) end
+            end
+            if ActiveContent then
+                ActiveContent.Visible = false
+            end
+            ActiveTab = TabBtn
+            ActiveContent = TabContent
+            Tween(TabBtn, {BackgroundColor3 = Theme.TabActive}, TweenFast)
+            Tween(TabActiveBar, {BackgroundTransparency = 0}, TweenFast)
+            Tween(TabNameLabel, {TextColor3 = Color3.fromRGB(255, 255, 255)}, TweenFast)
+            Tween(TabIconImg, {ImageColor3 = Color3.fromRGB(255, 255, 255)}, TweenFast)
+            TabContent.Visible = true
+            TabContent.Position = UDim2.new(0.08, 0, 0, 0)
+            TabContent.BackgroundTransparency = 1
+            Tween(TabContent, {Position = UDim2.new(0, 0, 0, 0)}, TweenMedium)
+        end
+        TabBtnDetect.MouseButton1Click:Connect(SelectThisTab)
+        TabBtnDetect.MouseEnter:Connect(function()
+            if ActiveTab ~= TabBtn then
+                Tween(TabBtn, {BackgroundColor3 = Theme.TabHover}, TweenFast)
+                Tween(TabNameLabel, {TextColor3 = Theme.TextAccent}, TweenFast)
+            end
+        end)
+        TabBtnDetect.MouseLeave:Connect(function()
+            if ActiveTab ~= TabBtn then
+                Tween(TabBtn, {BackgroundColor3 = Theme.TabInactive}, TweenFast)
+                Tween(TabNameLabel, {TextColor3 = Theme.TextSecondary}, TweenFast)
+            end
+        end)
+        if ActiveTab == nil then
+            SelectThisTab()
+        end
+        local Tab = {}
+        function Tab:Section(secCfg)
+            secCfg = secCfg or {}
+            local SecTitle = secCfg.Title or "功能分区"
+            local SecColor = secCfg.Color or Theme.Accent
+            local SecFrame = CreateRoundFrame(TabContent, UDim2.new(1, 0, 0, 32), UDim2.new(0, 0, 0, 0), Theme.SectionBackground, UDim.new(0, 10))
+            SecFrame.ZIndex = 3
+            MakeStroke(SecFrame, Theme.SectionBorder, 0.8)
+            local secDivLeft = CreateRoundFrame(SecFrame, UDim2.new(0.28, 0, 0, 1.5), UDim2.new(0, 8, 0.5, -1), SecColor, UDim.new(1, 0))
+            secDivLeft.BackgroundTransparency = 0.5
+            secDivLeft.ZIndex = 4
+            local secDivRight = CreateRoundFrame(SecFrame, UDim2.new(0.28, 0, 0, 1.5), UDim2.new(0.72, -8, 0.5, -1), SecColor, UDim.new(1, 0))
+            secDivRight.BackgroundTransparency = 0.5
+            secDivRight.ZIndex = 4
+            local SecLabel = CreateLabel(SecFrame, SecTitle, UDim2.new(0.4, 0, 1, 0), UDim2.new(0.3, 0, 0, 0), SecColor, Enum.Font.GothamBold, 13, Enum.TextXAlignment.Center, 4)
+            local SectionObj = {}
+            function SectionObj:SetTitle(newT) SecLabel.Text = newT end
+            return SectionObj
+        end
+        function Tab:Button(btnCfg)
+            btnCfg = btnCfg or {}
+            local BTitle = btnCfg.Title or "点击按钮"
+            local BDesc = btnCfg.Desc or ""
+            local BLocked = btnCfg.Locked or false
+            local BCallback = btnCfg.Callback or function() end
+            local BIcon = btnCfg.Icon or ""
+            local BStyle = btnCfg.Style or "默认"
+            local hasDesc = BDesc ~= ""
+            local bH = hasDesc and 56 or 40
+            local BFrame = CreateRoundFrame(TabContent, UDim2.new(1, 0, 0, bH), UDim2.new(0, 0, 0, 0), BLocked and Theme.SectionBackground or Theme.TertiaryBackground, UDim.new(0, 12))
+            BFrame.ZIndex = 3
+            MakeStroke(BFrame, BLocked and Theme.Border or Theme.BorderAccent, 1)
+            local BDetect = CreateButton(BFrame, UDim2.new(1, 0, 1, 0), UDim2.new(0, 0, 0, 0), nil, 5)
+            local iconPad = 0
+            if BIcon ~= "" then
+                local bIconImg = CreateImageLabel(BFrame, BIcon, UDim2.new(0, 20, 0, 20), UDim2.new(0, 10, 0.5, -10), BLocked and Theme.TextDisabled or Theme.Accent, 4)
+                iconPad = 32
+            end
+            local BTitleLbl = CreateLabel(BFrame, BTitle, UDim2.new(1, -(iconPad + 52), 0, 20), UDim2.new(0, 10 + iconPad, hasDesc and 0 or 0.5, hasDesc and 9 or -10), BLocked and Theme.TextDisabled or Theme.TextPrimary, Enum.Font.GothamBold, 14, Enum.TextXAlignment.Left, 4)
+            if hasDesc then
+                local BDescLbl = CreateLabel(BFrame, BDesc, UDim2.new(1, -(iconPad + 52), 0, 15), UDim2.new(0, 10 + iconPad, 0, 31), Theme.TextSecondary, Enum.Font.Gotham, 12, Enum.TextXAlignment.Left, 4)
+                BDescLbl.TextTruncate = Enum.TextTruncate.AtEnd
+            end
+            local BArrow = CreateLabel(BFrame, BLocked and "🔒" or "›", UDim2.new(0, 24, 1, 0), UDim2.new(1, -30, 0, 0), BLocked and Theme.TextDisabled or Theme.TextSecondary, Enum.Font.GothamBold, 20, Enum.TextXAlignment.Center, 4)
+            if not BLocked then
+                BDetect.MouseEnter:Connect(function()
+                    Tween(BFrame, {BackgroundColor3 = Theme.Accent}, TweenFast)
+                    Tween(BArrow, {TextColor3 = Color3.fromRGB(255, 255, 255), Rotation = 0}, TweenFast)
+                    Tween(BTitleLbl, {TextColor3 = Color3.fromRGB(255, 255, 255)}, TweenFast)
+                end)
+                BDetect.MouseLeave:Connect(function()
+                    Tween(BFrame, {BackgroundColor3 = Theme.TertiaryBackground}, TweenFast)
+                    Tween(BArrow, {TextColor3 = Theme.TextSecondary}, TweenFast)
+                    Tween(BTitleLbl, {TextColor3 = Theme.TextPrimary}, TweenFast)
+                end)
+                BDetect.MouseButton1Down:Connect(function()
+                    Tween(BFrame, {BackgroundColor3 = Theme.AccentDark, Size = UDim2.new(1, -6, 0, bH - 2)}, TweenFast)
+                end)
+                BDetect.MouseButton1Up:Connect(function()
+                    Tween(BFrame, {Size = UDim2.new(1, 0, 0, bH)}, TweenSpring)
+                end)
+                BDetect.MouseButton1Click:Connect(function()
+                    local ripple = CreateRoundFrame(BFrame, UDim2.new(0, 0, 0, 0), UDim2.new(0.5, 0, 0.5, 0), Color3.fromRGB(255, 255, 255), UDim.new(1, 0))
+                    ripple.BackgroundTransparency = 0.6
+                    ripple.ZIndex = 6
+                    Tween(ripple, {Size = UDim2.new(2.5, 0, 5, 0), Position = UDim2.new(-0.75, 0, -2, 0), BackgroundTransparency = 1}, TweenInfo.new(0.42, Enum.EasingStyle.Quad, Enum.EasingDirection.Out))
+                    task.delay(0.45, function() ripple:Destroy() end)
+                    pcall(BCallback)
+                end)
+            end
+            local BtnObj = {}
+            function BtnObj:SetTitle(t) BTitleLbl.Text = t end
+            function BtnObj:SetLocked(state)
+                BLocked = state
+                BFrame.BackgroundColor3 = state and Theme.SectionBackground or Theme.TertiaryBackground
+                BTitleLbl.TextColor3 = state and Theme.TextDisabled or Theme.TextPrimary
+                BArrow.Text = state and "🔒" or "›"
+            end
+            return BtnObj
+        end
+        function Tab:Toggle(togCfg)
+            togCfg = togCfg or {}
+            local TTitle = togCfg.Title or "功能开关"
+            local TDesc = togCfg.Desc or ""
+            local TDefault = togCfg.Default or false
+            local TCallback = togCfg.Callback or function() end
+            local togOn = TDefault
+            local hasDesc = TDesc ~= ""
+            local tH = hasDesc and 56 or 40
+            local TFrame = CreateRoundFrame(TabContent, UDim2.new(1, 0, 0, tH), UDim2.new(0, 0, 0, 0), Theme.TertiaryBackground, UDim.new(0, 12))
+            TFrame.ZIndex = 3
+            MakeStroke(TFrame, Theme.Border, 1)
+            local TDetect = CreateButton(TFrame, UDim2.new(1, 0, 1, 0), UDim2.new(0, 0, 0, 0), nil, 5)
+            local TTitleLbl = CreateLabel(TFrame, TTitle, UDim2.new(1, -68, 0, 20), UDim2.new(0, 10, hasDesc and 0 or 0.5, hasDesc and 9 or -10), Theme.TextPrimary, Enum.Font.GothamBold, 14, Enum.TextXAlignment.Left, 4)
+            if hasDesc then
+                local TDescLbl = CreateLabel(TFrame, TDesc, UDim2.new(1, -68, 0, 15), UDim2.new(0, 10, 0, 30), Theme.TextSecondary, Enum.Font.Gotham, 12, Enum.TextXAlignment.Left, 4)
+            end
+            local TTrack = CreateRoundFrame(TFrame, UDim2.new(0, 46, 0, 26), UDim2.new(1, -54, 0.5, -13), togOn and Theme.ToggleOn or Theme.ToggleOff, UDim.new(1, 0))
+            TTrack.ZIndex = 4
+            local TKnob = CreateRoundFrame(TTrack, UDim2.new(0, 20, 0, 20), UDim2.new(0, togOn and 23 or 3, 0.5, -10), Theme.ToggleKnob, UDim.new(1, 0))
+            TKnob.ZIndex = 5
+            local function SetToggle(state)
+                togOn = state
+                Tween(TTrack, {BackgroundColor3 = state and Theme.ToggleOn or Theme.ToggleOff}, TweenFast)
+                Tween(TKnob, {Position = UDim2.new(0, state and 23 or 3, 0.5, -10)}, TweenSpring)
+                if state then
+                    Tween(TFrame, {BackgroundColor3 = Color3.fromRGB(28, 38, 32)}, TweenFast)
+                else
+                    Tween(TFrame, {BackgroundColor3 = Theme.TertiaryBackground}, TweenFast)
+                end
+            end
+            TDetect.MouseButton1Click:Connect(function()
+                SetToggle(not togOn)
+                pcall(TCallback, togOn)
+            end)
+            TDetect.MouseEnter:Connect(function()
+                if not togOn then
+                    Tween(TFrame, {BackgroundColor3 = Theme.QuaternaryBackground}, TweenFast)
+                end
+            end)
+            TDetect.MouseLeave:Connect(function()
+                if not togOn then
+                    Tween(TFrame, {BackgroundColor3 = Theme.TertiaryBackground}, TweenFast)
+                end
+            end)
+            local TogObj = {}
+            function TogObj:Set(state) SetToggle(state) pcall(TCallback, togOn) end
+            function TogObj:Get() return togOn end
+            function TogObj:SetTitle(t) TTitleLbl.Text = t end
+            return TogObj
+        end
+        function Tab:Slider(sliderCfg)
+            sliderCfg = sliderCfg or {}
+            local STitle = sliderCfg.Title or "数值滑块"
+            local SDesc = sliderCfg.Desc or ""
+            local SMin = sliderCfg.Min or 0
+            local SMax = sliderCfg.Max or 100
+            local SDefault = sliderCfg.Default or SMin
+            local SSuffix = sliderCfg.Suffix or ""
+            local SStep = sliderCfg.Step or 1
+            local SCallback = sliderCfg.Callback or function() end
+            local sVal = math.clamp(SDefault, SMin, SMax)
+            local SFrame = CreateRoundFrame(TabContent, UDim2.new(1, 0, 0, 60), UDim2.new(0, 0, 0, 0), Theme.TertiaryBackground, UDim.new(0, 12))
+            SFrame.ZIndex = 3
+            MakeStroke(SFrame, Theme.Border, 1)
+            local STopRow = CreateFrame(SFrame, UDim2.new(1, -20, 0, 22), UDim2.new(0, 10, 0, 8), nil, 4)
+            STopRow.BackgroundTransparency = 1
+            local STitleLbl = CreateLabel(STopRow, STitle, UDim2.new(0.65, 0, 1, 0), UDim2.new(0, 0, 0, 0), Theme.TextPrimary, Enum.Font.GothamBold, 14, Enum.TextXAlignment.Left, 4)
+            local SValLbl = CreateLabel(STopRow, tostring(sVal) .. SSuffix, UDim2.new(0.34, 0, 1, 0), UDim2.new(0.66, 0, 0, 0), Theme.Accent, Enum.Font.GothamBold, 15, Enum.TextXAlignment.Right, 4)
+            local STrack = CreateRoundFrame(SFrame, UDim2.new(1, -20, 0, 8), UDim2.new(0, 10, 0, 38), Theme.SliderBackground, UDim.new(1, 0))
+            STrack.ZIndex = 4
+            local sFrac = (sVal - SMin) / (SMax - SMin)
+            local SFill = CreateRoundFrame(STrack, UDim2.new(sFrac, 0, 1, 0), UDim2.new(0, 0, 0, 0), Theme.SliderFill, UDim.new(1, 0))
+            SFill.ZIndex = 5
+            local SKnob = CreateRoundFrame(STrack, UDim2.new(0, 18, 0, 18), UDim2.new(sFrac, -9, 0.5, -9), Theme.SliderKnob, UDim.new(1, 0))
+            SKnob.ZIndex = 6
+            MakeStroke(SKnob, Theme.Accent, 2)
+            local SGlow = CreateRoundFrame(SKnob, UDim2.new(1, 8, 1, 8), UDim2.new(0.5, -13, 0.5, -13), Theme.Accent, UDim.new(1, 0))
+            SGlow.BackgroundTransparency = 0.8
+            SGlow.ZIndex = 5
+            local SDetect = CreateButton(SFrame, UDim2.new(1, 0, 0, 30), UDim2.new(0, 0, 0, 30), nil, 7)
+            local isDrag = false
+            local function RecalcSlider(mouseX)
+                local abs = STrack.AbsolutePosition
+                local absS = STrack.AbsoluteSize
+                local frac = math.clamp((mouseX - abs.X) / absS.X, 0, 1)
+                local raw = SMin + frac * (SMax - SMin)
+                local stepped = math.floor(raw / SStep + 0.5) * SStep
+                local newVal = math.clamp(stepped, SMin, SMax)
+                if newVal ~= sVal then
+                    sVal = newVal
+                    local newFrac = (sVal - SMin) / (SMax - SMin)
+                    SValLbl.Text = tostring(sVal) .. SSuffix
+                    Tween(SFill, {Size = UDim2.new(newFrac, 0, 1, 0)}, TweenFast)
+                    Tween(SKnob, {Position = UDim2.new(newFrac, -9, 0.5, -9)}, TweenFast)
+                    pcall(SCallback, sVal)
+                end
+            end
+            SDetect.MouseButton1Down:Connect(function()
+                isDrag = true
+                RecalcSlider(Mouse.X)
+                Tween(SKnob, {Size = UDim2.new(0, 22, 0, 22), Position = UDim2.new((sVal - SMin) / (SMax - SMin), -11, 0.5, -11)}, TweenSpring)
+                Tween(SGlow, {BackgroundTransparency = 0.5}, TweenFast)
+            end)
+            UserInputService.InputChanged:Connect(function(inp)
+                if isDrag and inp.UserInputType == Enum.UserInputType.MouseMovement then
+                    RecalcSlider(inp.Position.X)
+                end
+            end)
+            UserInputService.InputEnded:Connect(function(inp)
+                if inp.UserInputType == Enum.UserInputType.MouseButton1 and isDrag then
+                    isDrag = false
+                    Tween(SKnob, {Size = UDim2.new(0, 18, 0, 18)}, TweenFast)
+                    Tween(SGlow, {BackgroundTransparency = 0.8}, TweenFast)
+                end
+            end)
+            if SDesc ~= "" then
+                local SDescLbl = CreateLabel(SFrame, SDesc, UDim2.new(1, -20, 0, 12), UDim2.new(0, 10, 0, 46), Theme.TextDisabled, Enum.Font.Gotham, 11, Enum.TextXAlignment.Left, 4)
+            end
+            local SliderObj = {}
+            function SliderObj:Set(v)
+                sVal = math.clamp(v, SMin, SMax)
+                local f = (sVal - SMin) / (SMax - SMin)
+                SValLbl.Text = tostring(sVal) .. SSuffix
+                Tween(SFill, {Size = UDim2.new(f, 0, 1, 0)}, TweenFast)
+                Tween(SKnob, {Position = UDim2.new(f, -9, 0.5, -9)}, TweenFast)
+                pcall(SCallback, sVal)
+            end
+            function SliderObj:Get() return sVal end
+            function SliderObj:SetTitle(t) STitleLbl.Text = t end
+            return SliderObj
+        end
+        function Tab:Dropdown(dropCfg)
+            dropCfg = dropCfg or {}
+            local DTitle = dropCfg.Title or "下拉选择"
+            local DDesc = dropCfg.Desc or ""
+            local DOptions = dropCfg.Options or {"选项一", "选项二", "选项三"}
+            local DDefault = dropCfg.Default or DOptions[1]
+            local DMulti = dropCfg.Multi or false
+            local DCallback = dropCfg.Callback or function() end
+            local dSelected = DDefault
+            local dOpen = false
+            local hasDesc = DDesc ~= ""
+            local dH = hasDesc and 56 or 44
+            local DFrame = CreateRoundFrame(TabContent, UDim2.new(1, 0, 0, dH), UDim2.new(0, 0, 0, 0), Theme.TertiaryBackground, UDim.new(0, 12))
+            DFrame.ZIndex = 5
+            DFrame.ClipsDescendants = false
+            MakeStroke(DFrame, Theme.Border, 1)
+            local DDetect = CreateButton(DFrame, UDim2.new(1, 0, 1, 0), UDim2.new(0, 0, 0, 0), nil, 7)
+            local DTitleLbl = CreateLabel(DFrame, DTitle, UDim2.new(0.55, 0, 0, 20), UDim2.new(0, 10, hasDesc and 0 or 0.5, hasDesc and 9 or -10), Theme.TextPrimary, Enum.Font.GothamBold, 14, Enum.TextXAlignment.Left, 6)
+            if hasDesc then
+                local DDescLbl = CreateLabel(DFrame, DDesc, UDim2.new(0.55, 0, 0, 14), UDim2.new(0, 10, 0, 30), Theme.TextSecondary, Enum.Font.Gotham, 11, Enum.TextXAlignment.Left, 6)
+            end
+            local DSelLbl = CreateLabel(DFrame, tostring(dSelected), UDim2.new(0.38, 0, 1, 0), UDim2.new(0.58, 0, 0, 0), Theme.Accent, Enum.Font.Gotham, 13, Enum.TextXAlignment.Right, 6)
+            DSelLbl.TextTruncate = Enum.TextTruncate.AtEnd
+            local DArrowLbl = CreateLabel(DFrame, "▾", UDim2.new(0, 18, 1, 0), UDim2.new(1, -22, 0, 0), Theme.TextSecondary, Enum.Font.GothamBold, 14, Enum.TextXAlignment.Center, 6)
+            local DList = CreateRoundFrame(DFrame, UDim2.new(1, 0, 0, 0), UDim2.new(0, 0, 1, 6), Theme.DropdownBackground, UDim.new(0, 12))
+            DList.ZIndex = 20
+            DList.ClipsDescendants = true
+            MakeStroke(DList, Theme.AccentDark, 1)
+            MakePadding(DList, 5, 5, 5, 5)
+            MakeListLayout(DList, Enum.FillDirection.Vertical, 4)
+            local function RebuildList()
+                for _, ch in ipairs(DList:GetChildren()) do
+                    if ch:IsA("Frame") then ch:Destroy() end
+                end
+                for _, opt in ipairs(DOptions) do
+                    local isActive = opt == dSelected
+                    local OFrame = CreateRoundFrame(DList, UDim2.new(1, 0, 0, 32), UDim2.new(0, 0, 0, 0), isActive and Theme.Accent or Theme.DropdownItem, UDim.new(0, 9))
+                    OFrame.ZIndex = 21
+                    local OLbl = CreateLabel(OFrame, opt, UDim2.new(1, -28, 1, 0), UDim2.new(0, 10, 0, 0), isActive and Color3.fromRGB(255, 255, 255) or Theme.TextSecondary, isActive and Enum.Font.GothamBold or Enum.Font.Gotham, 13, Enum.TextXAlignment.Left, 22)
+                    if isActive then
+                        local OCheckLbl = CreateLabel(OFrame, "✓", UDim2.new(0, 20, 1, 0), UDim2.new(1, -24, 0, 0), Color3.fromRGB(255, 255, 255), Enum.Font.GothamBold, 14, Enum.TextXAlignment.Center, 22)
+                    end
+                    local ODetect = CreateButton(OFrame, UDim2.new(1, 0, 1, 0), UDim2.new(0, 0, 0, 0), nil, 23)
+                    ODetect.MouseEnter:Connect(function()
+                        if opt ~= dSelected then Tween(OFrame, {BackgroundColor3 = Theme.TertiaryBackground}, TweenFast) end
+                    end)
+                    ODetect.MouseLeave:Connect(function()
+                        if opt ~= dSelected then Tween(OFrame, {BackgroundColor3 = Theme.DropdownItem}, TweenFast) end
+                    end)
+                    ODetect.MouseButton1Click:Connect(function()
+                        dSelected = opt
+                        DSelLbl.Text = opt
+                        dOpen = false
+                        Tween(DList, {Size = UDim2.new(1, 0, 0, 0)}, TweenFast)
+                        Tween(DArrowLbl, {Rotation = 0}, TweenFast)
+                        Tween(DFrame, {BackgroundColor3 = Theme.TertiaryBackground}, TweenFast)
+                        RebuildList()
+                        pcall(DCallback, dSelected)
+                    end)
+                end
+            end
+            RebuildList()
+            DDetect.MouseButton1Click:Connect(function()
+                dOpen = not dOpen
+                local count = #DOptions
+                local listH = math.min(count * 36 + 10, 170)
+                if dOpen then
+                    Tween(DList, {Size = UDim2.new(1, 0, 0, listH)}, TweenSpring)
+                    Tween(DArrowLbl, {Rotation = 180}, TweenFast)
+                    Tween(DFrame, {BackgroundColor3 = Theme.QuaternaryBackground}, TweenFast)
+                else
+                    Tween(DList, {Size = UDim2.new(1, 0, 0, 0)}, TweenFast)
+                    Tween(DArrowLbl, {Rotation = 0}, TweenFast)
+                    Tween(DFrame, {BackgroundColor3 = Theme.TertiaryBackground}, TweenFast)
+                end
+            end)
+            local DropObj = {}
+            function DropObj:Set(v) dSelected = v DSelLbl.Text = v RebuildList() pcall(DCallback, dSelected) end
+            function DropObj:Get() return dSelected end
+            function DropObj:SetOptions(opts) DOptions = opts RebuildList() end
+            function DropObj:SetTitle(t) DTitleLbl.Text = t end
+            return DropObj
+        end
+        function Tab:TextBox(tbCfg)
+            tbCfg = tbCfg or {}
+            local TBTitle = tbCfg.Title or "文本输入框"
+            local TBDesc = tbCfg.Desc or ""
+            local TBPlaceholder = tbCfg.Placeholder or "请在此处输入内容..."
+            local TBDefault = tbCfg.Default or ""
+            local TBCallback = tbCfg.Callback or function() end
+            local TBLiveCallback = tbCfg.LiveCallback or function() end
+            local TBClear = tbCfg.ClearOnFocus or false
+            local hasDesc = TBDesc ~= ""
+            local tbH = hasDesc and 68 or 58
+            local TBFrame = CreateRoundFrame(TabContent, UDim2.new(1, 0, 0, tbH), UDim2.new(0, 0, 0, 0), Theme.TertiaryBackground, UDim.new(0, 12))
+            TBFrame.ZIndex = 3
+            MakeStroke(TBFrame, Theme.Border, 1)
+            local TBTitleLbl = CreateLabel(TBFrame, TBTitle, UDim2.new(1, -20, 0, 18), UDim2.new(0, 10, 0, 8), Theme.TextPrimary, Enum.Font.GothamBold, 14, Enum.TextXAlignment.Left, 4)
+            if hasDesc then
+                local TBDescLbl = CreateLabel(TBFrame, TBDesc, UDim2.new(1, -20, 0, 13), UDim2.new(0, 10, 0, 27), Theme.TextSecondary, Enum.Font.Gotham, 11, Enum.TextXAlignment.Left, 4)
+            end
+            local TBInputWrap = CreateRoundFrame(TBFrame, UDim2.new(1, -20, 0, 28), UDim2.new(0, 10, 0, hasDesc and 44 or 30), Theme.InputBackground, UDim.new(0, 8))
+            TBInputWrap.ZIndex = 4
+            local TBStroke = MakeStroke(TBInputWrap, Theme.Border, 1)
+            local TBBox = Instance.new("TextBox")
+            TBBox.Size = UDim2.new(1, -16, 1, 0)
+            TBBox.Position = UDim2.new(0, 8, 0, 0)
+            TBBox.BackgroundTransparency = 1
+            TBBox.Text = TBDefault
+            TBBox.PlaceholderText = TBPlaceholder
+            TBBox.TextColor3 = Theme.TextPrimary
+            TBBox.PlaceholderColor3 = Theme.TextDisabled
+            TBBox.Font = Enum.Font.Gotham
+            TBBox.TextSize = 13
+            TBBox.TextXAlignment = Enum.TextXAlignment.Left
+            TBBox.ClearTextOnFocus = TBClear
+            TBBox.ZIndex = 5
+            TBBox.Parent = TBInputWrap
+            TBBox.Focused:Connect(function()
+                Tween(TBInputWrap, {BackgroundColor3 = Theme.InputFocused}, TweenFast)
+                Tween(TBStroke, {Color = Theme.Accent, Thickness = 1.5}, TweenFast)
+            end)
+            TBBox.FocusLost:Connect(function(enter)
+                Tween(TBInputWrap, {BackgroundColor3 = Theme.InputBackground}, TweenFast)
+                Tween(TBStroke, {Color = Theme.Border, Thickness = 1}, TweenFast)
+                if enter then pcall(TBCallback, TBBox.Text) end
+            end)
+            TBBox:GetPropertyChangedSignal("Text"):Connect(function()
+                pcall(TBLiveCallback, TBBox.Text)
+            end)
+            local TBObj = {}
+            function TBObj:Get() return TBBox.Text end
+            function TBObj:Set(t) TBBox.Text = t end
+            function TBObj:SetTitle(t) TBTitleLbl.Text = t end
+            return TBObj
+        end
+        function Tab:Label(lblCfg)
+            lblCfg = lblCfg or {}
+            local LText = lblCfg.Text or "这是一个文本标签"
+            local LColor = lblCfg.Color or Theme.TextPrimary
+            local LTSize = lblCfg.TextSize or 14
+            local LBold = lblCfg.Bold or false
+            local LIcon = lblCfg.Icon or ""
+            local LWrap = lblCfg.Wrap or false
+            local LAlign = lblCfg.Align or Enum.TextXAlignment.Left
+            local LFrame = CreateRoundFrame(TabContent, UDim2.new(1, 0, 0, 36), UDim2.new(0, 0, 0, 0), Theme.SectionBackground, UDim.new(0, 12))
+            LFrame.ZIndex = 3
+            MakeStroke(LFrame, Theme.Border, 0.8)
+            local iconOff = 0
+            if LIcon ~= "" then
+                local LIconImg = CreateImageLabel(LFrame, LIcon, UDim2.new(0, 20, 0, 20), UDim2.new(0, 9, 0.5, -10), LColor, 4)
+                iconOff = 32
+            end
+            local LTextLbl = CreateLabel(LFrame, LText, UDim2.new(1, -(iconOff + 18), 1, 0), UDim2.new(0, 9 + iconOff, 0, 0), LColor, LBold and Enum.Font.GothamBold or Enum.Font.Gotham, LTSize, LAlign, 4)
+            LTextLbl.TextWrapped = LWrap
+            if LWrap then LFrame.Size = UDim2.new(1, 0, 0, 0) LFrame.AutomaticSize = Enum.AutomaticSize.Y end
+            local LObj = {}
+            function LObj:SetText(t) LTextLbl.Text = t end
+            function LObj:SetColor(c) LTextLbl.TextColor3 = c end
+            function LObj:SetSize(s) LTextLbl.TextSize = s end
+            return LObj
+        end
+        function Tab:ColorPicker(cpCfg)
+            cpCfg = cpCfg or {}
+            local CPTitle = cpCfg.Title or "颜色选择器"
+            local CPDefault = cpCfg.Default or Color3.fromRGB(99, 102, 241)
+            local CPCallback = cpCfg.Callback or function() end
+            local cpH, cpS, cpV = Color3.toHSV(CPDefault)
+            local cpColor = CPDefault
+            local cpOpen = false
+            local CPFrame = CreateRoundFrame(TabContent, UDim2.new(1, 0, 0, 44), UDim2.new(0, 0, 0, 0), Theme.TertiaryBackground, UDim.new(0, 12))
+            CPFrame.ZIndex = 5
+            CPFrame.ClipsDescendants = false
+            MakeStroke(CPFrame, Theme.Border, 1)
+            local CPDetect = CreateButton(CPFrame, UDim2.new(1, 0, 1, 0), UDim2.new(0, 0, 0, 0), nil, 7)
+            local CPTitleLbl = CreateLabel(CPFrame, CPTitle, UDim2.new(1, -70, 1, 0), UDim2.new(0, 10, 0, 0), Theme.TextPrimary, Enum.Font.GothamBold, 14, Enum.TextXAlignment.Left, 6)
+            local CPPreview = CreateRoundFrame(CPFrame, UDim2.new(0, 40, 0, 24), UDim2.new(1, -48, 0.5, -12), CPDefault, UDim.new(0, 8))
+            CPPreview.ZIndex = 6
+            MakeStroke(CPPreview, Theme.Border, 1.5)
+            local CPPanel = CreateRoundFrame(CPFrame, UDim2.new(1, 0, 0, 0), UDim2.new(0, 0, 1, 8), Theme.ColorPickerBackground, UDim.new(0, 14))
+            CPPanel.ZIndex = 15
+            CPPanel.ClipsDescendants = true
+            MakeStroke(CPPanel, Theme.Accent, 1)
+            local CPSVBoard = CreateRoundFrame(CPPanel, UDim2.new(1, -18, 0, 110), UDim2.new(0, 9, 0, 9), Color3.fromHSV(cpH, 1, 1), UDim.new(0, 10))
+            CPSVBoard.ZIndex = 16
+            local CPSVWhite = Instance.new("UIGradient")
+            CPSVWhite.Color = ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)), ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255))})
+            CPSVWhite.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(1, 1)})
+            CPSVWhite.Parent = CPSVBoard
+            local CPSVBlack = CreateRoundFrame(CPSVBoard, UDim2.new(1, 0, 1, 0), UDim2.new(0, 0, 0, 0), Color3.fromRGB(0, 0, 0), UDim.new(0, 10))
+            CPSVBlack.ZIndex = 17
+            local CPSVBlackGrad = Instance.new("UIGradient")
+            CPSVBlackGrad.Rotation = 90
+            CPSVBlackGrad.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(1, 0)})
+            CPSVBlackGrad.Parent = CPSVBlack
+            local CPSVKnob = CreateRoundFrame(CPSVBoard, UDim2.new(0, 14, 0, 14), UDim2.new(cpS, -7, 1 - cpV, -7), Color3.fromRGB(255, 255, 255), UDim.new(1, 0))
+            CPSVKnob.ZIndex = 19
+            MakeStroke(CPSVKnob, Color3.fromRGB(0, 0, 0), 2)
+            local CPHueBar = CreateRoundFrame(CPPanel, UDim2.new(1, -18, 0, 16), UDim2.new(0, 9, 0, 126), Color3.fromRGB(255, 255, 255), UDim.new(1, 0))
+            CPHueBar.ZIndex = 16
+            local CPHueGrad = Instance.new("UIGradient")
+            CPHueGrad.Color = ColorSequence.new({
+                ColorSequenceKeypoint.new(0, Color3.fromHSV(0, 1, 1)),
+                ColorSequenceKeypoint.new(1/6, Color3.fromHSV(1/6, 1, 1)),
+                ColorSequenceKeypoint.new(2/6, Color3.fromHSV(2/6, 1, 1)),
+                ColorSequenceKeypoint.new(3/6, Color3.fromHSV(3/6, 1, 1)),
+                ColorSequenceKeypoint.new(4/6, Color3.fromHSV(4/6, 1, 1)),
+                ColorSequenceKeypoint.new(5/6, Color3.fromHSV(5/6, 1, 1)),
+                ColorSequenceKeypoint.new(1, Color3.fromHSV(1, 1, 1)),
+            })
+            CPHueGrad.Parent = CPHueBar
+            local CPHueKnob = CreateRoundFrame(CPHueBar, UDim2.new(0, 12, 1, 6), UDim2.new(cpH, -6, 0.5, -11), Color3.fromRGB(255, 255, 255), UDim.new(0, 5))
+            CPHueKnob.ZIndex = 18
+            MakeStroke(CPHueKnob, Color3.fromRGB(0, 0, 0), 2)
+            local CPHexRow = CreateFrame(CPPanel, UDim2.new(1, -18, 0, 20), UDim2.new(0, 9, 0, 150), nil, 16)
+            CPHexRow.BackgroundTransparency = 1
+            local CPHexLabel = CreateLabel(CPHexRow, "颜色代码: #" .. CPDefault:ToHex():upper(), UDim2.new(0.6, 0, 1, 0), UDim2.new(0, 0, 0, 0), Theme.TextSecondary, Enum.Font.Gotham, 12, Enum.TextXAlignment.Left, 17)
+            local CPPreviewSmall = CreateRoundFrame(CPHexRow, UDim2.new(0, 40, 0, 18), UDim2.new(1, -44, 0.5, -9), CPDefault, UDim.new(0, 6))
+            CPPreviewSmall.ZIndex = 17
+            local function RefreshCP()
+                cpColor = Color3.fromHSV(cpH, cpS, cpV)
+                Tween(CPPreview, {BackgroundColor3 = cpColor}, TweenFast)
+                Tween(CPPreviewSmall, {BackgroundColor3 = cpColor}, TweenFast)
+                Tween(CPSVBoard, {BackgroundColor3 = Color3.fromHSV(cpH, 1, 1)}, TweenFast)
+                CPHexLabel.Text = "颜色代码: #" .. cpColor:ToHex():upper()
+                pcall(CPCallback, cpColor)
+            end
+            local svDrag = false
+            local hueDrag = false
+            local CPSVDetect = CreateButton(CPSVBoard, UDim2.new(1, 0, 1, 0), UDim2.new(0, 0, 0, 0), nil, 20)
+            CPSVDetect.MouseButton1Down:Connect(function()
+                svDrag = true
+                local ap = CPSVBoard.AbsolutePosition
+                local as = CPSVBoard.AbsoluteSize
+                cpS = math.clamp((Mouse.X - ap.X) / as.X, 0, 1)
+                cpV = 1 - math.clamp((Mouse.Y - ap.Y) / as.Y, 0, 1)
+                Tween(CPSVKnob, {Position = UDim2.new(cpS, -7, 1 - cpV, -7)}, TweenFast)
+                RefreshCP()
+            end)
+            local CPHueDetect = CreateButton(CPHueBar, UDim2.new(1, 0, 1, 0), UDim2.new(0, 0, 0, 0), nil, 20)
+            CPHueDetect.MouseButton1Down:Connect(function()
+                hueDrag = true
+                local ap = CPHueBar.AbsolutePosition
+                local as = CPHueBar.AbsoluteSize
+                cpH = math.clamp((Mouse.X - ap.X) / as.X, 0, 1)
+                Tween(CPHueKnob, {Position = UDim2.new(cpH, -6, 0.5, -11)}, TweenFast)
+                RefreshCP()
+            end)
+            UserInputService.InputChanged:Connect(function(inp)
+                if inp.UserInputType ~= Enum.UserInputType.MouseMovement then return end
+                if svDrag then
+                    local ap = CPSVBoard.AbsolutePosition
+                    local as = CPSVBoard.AbsoluteSize
+                    cpS = math.clamp((inp.Position.X - ap.X) / as.X, 0, 1)
+                    cpV = 1 - math.clamp((inp.Position.Y - ap.Y) / as.Y, 0, 1)
+                    Tween(CPSVKnob, {Position = UDim2.new(cpS, -7, 1 - cpV, -7)}, TweenFast)
+                    RefreshCP()
+                end
+                if hueDrag then
+                    local ap = CPHueBar.AbsolutePosition
+                    local as = CPHueBar.AbsoluteSize
+                    cpH = math.clamp((inp.Position.X - ap.X) / as.X, 0, 1)
+                    Tween(CPHueKnob, {Position = UDim2.new(cpH, -6, 0.5, -11)}, TweenFast)
+                    RefreshCP()
+                end
+            end)
+            UserInputService.InputEnded:Connect(function(inp)
+                if inp.UserInputType == Enum.UserInputType.MouseButton1 then
+                    svDrag = false
+                    hueDrag = false
+                end
+            end)
+            CPDetect.MouseButton1Click:Connect(function()
+                cpOpen = not cpOpen
+                if cpOpen then
+                    Tween(CPPanel, {Size = UDim2.new(1, 0, 0, 180)}, TweenSpring)
+                    Tween(CPFrame, {BackgroundColor3 = Theme.QuaternaryBackground}, TweenFast)
+                else
+                    Tween(CPPanel, {Size = UDim2.new(1, 0, 0, 0)}, TweenFast)
+                    Tween(CPFrame, {BackgroundColor3 = Theme.TertiaryBackground}, TweenFast)
+                end
+            end)
+            local CPObj = {}
+            function CPObj:Get() return cpColor end
+            function CPObj:Set(c)
+                cpColor = c
+                cpH, cpS, cpV = Color3.toHSV(c)
+                Tween(CPPreview, {BackgroundColor3 = c}, TweenFast)
+                Tween(CPPreviewSmall, {BackgroundColor3 = c}, TweenFast)
+                Tween(CPSVBoard, {BackgroundColor3 = Color3.fromHSV(cpH, 1, 1)}, TweenFast)
+                Tween(CPSVKnob, {Position = UDim2.new(cpS, -7, 1 - cpV, -7)}, TweenFast)
+                Tween(CPHueKnob, {Position = UDim2.new(cpH, -6, 0.5, -11)}, TweenFast)
+                CPHexLabel.Text = "颜色代码: #" .. c:ToHex():upper()
+            end
+            return CPObj
+        end
+        function Tab:Keybind(kbCfg)
+            kbCfg = kbCfg or {}
+            local KBTitle = kbCfg.Title or "快捷键绑定"
+            local KBDesc = kbCfg.Desc or ""
+            local KBDefault = kbCfg.Default or Enum.KeyCode.RightShift
+            local KBCallback = kbCfg.Callback or function() end
+            local KBPassthrough = kbCfg.Passthrough or false
+            local kbKey = KBDefault
+            local kbListening = false
+            local hasDesc = KBDesc ~= ""
+            local kbH = hasDesc and 56 or 40
+            local KBFrame = CreateRoundFrame(TabContent, UDim2.new(1, 0, 0, kbH), UDim2.new(0, 0, 0, 0), Theme.TertiaryBackground, UDim.new(0, 12))
+            KBFrame.ZIndex = 3
+            MakeStroke(KBFrame, Theme.Border, 1)
+            local KBTitleLbl = CreateLabel(KBFrame, KBTitle, UDim2.new(1, -112, 0, 20), UDim2.new(0, 10, hasDesc and 0 or 0.5, hasDesc and 9 or -10), Theme.TextPrimary, Enum.Font.GothamBold, 14, Enum.TextXAlignment.Left, 4)
+            if hasDesc then
+                local KBDescLbl = CreateLabel(KBFrame, KBDesc, UDim2.new(1, -112, 0, 14), UDim2.new(0, 10, 0, 30), Theme.TextSecondary, Enum.Font.Gotham, 11, Enum.TextXAlignment.Left, 4)
+            end
+            local KBBtnFrame = CreateRoundFrame(KBFrame, UDim2.new(0, 96, 0, 28), UDim2.new(1, -104, 0.5, -14), Theme.KeybindBackground, UDim.new(0, 9))
+            KBBtnFrame.ZIndex = 4
+            MakeStroke(KBBtnFrame, Theme.Border, 1)
+            local KBKeyLbl = CreateLabel(KBBtnFrame, kbKey.Name, UDim2.new(1, 0, 1, 0), UDim2.new(0, 0, 0, 0), Theme.Accent, Enum.Font.GothamBold, 13, Enum.TextXAlignment.Center, 5)
+            local KBDetect = CreateButton(KBBtnFrame, UDim2.new(1, 0, 1, 0), UDim2.new(0, 0, 0, 0), nil, 6)
+            KBDetect.MouseButton1Click:Connect(function()
+                if kbListening then return end
+                kbListening = true
+                KBKeyLbl.Text = "按下按键..."
+                Tween(KBBtnFrame, {BackgroundColor3 = Theme.AccentDark}, TweenFast)
+                local conn
+                conn = UserInputService.InputBegan:Connect(function(inp, gpe)
+                    if gpe then return end
+                    if inp.UserInputType == Enum.UserInputType.Keyboard then
+                        kbKey = inp.KeyCode
+                        KBKeyLbl.Text = kbKey.Name
+                        kbListening = false
+                        Tween(KBBtnFrame, {BackgroundColor3 = Theme.KeybindBackground}, TweenFast)
+                        conn:Disconnect()
+                    end
+                end)
+            end)
+            KBDetect.MouseEnter:Connect(function()
+                if not kbListening then Tween(KBBtnFrame, {BackgroundColor3 = Theme.TertiaryBackground}, TweenFast) end
+            end)
+            KBDetect.MouseLeave:Connect(function()
+                if not kbListening then Tween(KBBtnFrame, {BackgroundColor3 = Theme.KeybindBackground}, TweenFast) end
+            end)
+            UserInputService.InputBegan:Connect(function(inp, gpe)
+                if gpe and not KBPassthrough then return end
+                if not kbListening and inp.KeyCode == kbKey then
+                    pcall(KBCallback, kbKey)
+                end
+            end)
+            local KBObj = {}
+            function KBObj:Get() return kbKey end
+            function KBObj:Set(k) kbKey = k KBKeyLbl.Text = k.Name end
+            function KBObj:SetTitle(t) KBTitleLbl.Text = t end
+            return KBObj
+        end
+        function Tab:Paragraph(paraCfg)
+            paraCfg = paraCfg or {}
+            local PTitle = paraCfg.Title or "段落标题"
+            local PBody = paraCfg.Body or "这里是段落内容，可以显示较长的描述性文字信息。"
+            local PFrame = CreateRoundFrame(TabContent, UDim2.new(1, 0, 0, 0), UDim2.new(0, 0, 0, 0), Theme.SectionBackground, UDim.new(0, 12))
+            PFrame.AutomaticSize = Enum.AutomaticSize.Y
+            PFrame.ZIndex = 3
+            MakeStroke(PFrame, Theme.Border, 0.8)
+            MakePadding(PFrame, 9, 9, 11, 11)
+            MakeListLayout(PFrame, Enum.FillDirection.Vertical, 4)
+            local PTitleLbl = CreateLabel(PFrame, PTitle, UDim2.new(1, 0, 0, 18), UDim2.new(0, 0, 0, 0), Theme.TextAccent, Enum.Font.GothamBold, 14, Enum.TextXAlignment.Left, 4)
+            local PDivider = CreateRoundFrame(PFrame, UDim2.new(1, 0, 0, 1), UDim2.new(0, 0, 0, 0), Theme.Accent, UDim.new(1, 0))
+            PDivider.BackgroundTransparency = 0.6
+            PDivider.ZIndex = 4
+            local PBodyLbl = CreateLabel(PFrame, PBody, UDim2.new(1, 0, 0, 0), UDim2.new(0, 0, 0, 0), Theme.TextSecondary, Enum.Font.Gotham, 13, Enum.TextXAlignment.Left, 4)
+            PBodyLbl.TextWrapped = true
+            PBodyLbl.AutomaticSize = Enum.AutomaticSize.Y
+            local ParaObj = {}
+            function ParaObj:SetTitle(t) PTitleLbl.Text = t end
+            function ParaObj:SetBody(b) PBodyLbl.Text = b end
+            return ParaObj
+        end
+        return Tab
+    end
+    return Win
+end
+return DeltaX
