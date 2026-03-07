@@ -1,22 +1,16 @@
 local DeltaXLib = {
     Flags = {},
     Theme = {
-        Main = Color3.fromRGB(15, 15, 20),
-        Secondary = Color3.fromRGB(25, 25, 32),
-        Accent = Color3.fromRGB(80, 160, 255),
-        AccentDark = Color3.fromRGB(50, 110, 200),
+        Main = Color3.fromRGB(18, 18, 22),
+        Secondary = Color3.fromRGB(28, 28, 35),
+        Accent = Color3.fromRGB(0, 150, 255),
         Text = Color3.fromRGB(255, 255, 255),
-        TextDark = Color3.fromRGB(170, 170, 185),
-        Placeholder = Color3.fromRGB(110, 110, 130),
+        TextDark = Color3.fromRGB(180, 180, 180),
+        Placeholder = Color3.fromRGB(120, 120, 120),
         White = Color3.fromRGB(255, 255, 255),
         Black = Color3.fromRGB(0, 0, 0),
-        Success = Color3.fromRGB(60, 200, 120),
-        Warning = Color3.fromRGB(255, 170, 50),
-        Error = Color3.fromRGB(255, 70, 70),
         Rounded = UDim.new(0, 14),
-        RoundedSmall = UDim.new(0, 8),
-        RoundedFull = UDim.new(1, 0),
-        TweenSpeed = 0.28
+        TweenSpeed = 0.3
     },
     Tabs = {},
     CurrentTab = nil,
@@ -25,8 +19,7 @@ local DeltaXLib = {
     IsDraggingUI = false,
     IsPromptOpen = false,
     UILocked = false,
-    NotificationQueue = {},
-    NotificationActive = false
+    Notifications = {}
 }
 
 local TweenService = game:GetService("TweenService")
@@ -37,19 +30,19 @@ local Players = game:GetService("Players")
 local Mouse = Players.LocalPlayer:GetMouse()
 
 local function Create(ClassName, Properties)
-    local Inst = Instance.new(ClassName)
+    local Instance = Instance.new(ClassName)
     for i, v in pairs(Properties) do
-        Inst[i] = v
+        Instance[i] = v
     end
-    return Inst
+    return Instance
 end
 
-local function GetTweenInfo(Speed, Style, Direction)
-    return TweenInfo.new(Speed or DeltaXLib.Theme.TweenSpeed, Style or Enum.EasingStyle.Quart, Direction or Enum.EasingDirection.Out)
+local function GetTweenInfo(Speed, Style)
+    return TweenInfo.new(Speed or DeltaXLib.Theme.TweenSpeed, Style or Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 end
 
-local function ApplyTween(Object, Properties, Speed, Style, Direction)
-    local Info = GetTweenInfo(Speed, Style, Direction)
+local function ApplyTween(Object, Properties, Speed)
+    local Info = GetTweenInfo(Speed)
     local Tween = TweenService:Create(Object, Info, Properties)
     Tween:Play()
     return Tween
@@ -74,6 +67,7 @@ local function MakeDraggable(Frame, DragHandle)
     local DragInput = nil
     local DragStart = nil
     local StartPos = nil
+
     DragHandle.InputBegan:Connect(function(Input, gameProcessed)
         if gameProcessed then return end
         if DeltaXLib.UILocked then return end
@@ -82,21 +76,24 @@ local function MakeDraggable(Frame, DragHandle)
             DeltaXLib.IsDraggingUI = true
             DragStart = Input.Position
             StartPos = Frame.Position
+
             Input.Changed:Connect(function()
                 if Input.UserInputState == Enum.UserInputState.End then
                     Dragging = false
-                    task.wait(0.08)
+                    task.wait(0.1)
                     DeltaXLib.IsDraggingUI = false
                 end
             end)
         end
     end)
+
     DragHandle.InputChanged:Connect(function(Input)
         if DeltaXLib.UILocked then return end
         if (Input.UserInputType == Enum.UserInputType.MouseMovement or Input.UserInputType == Enum.UserInputType.Touch) and not DeltaXLib.IsPromptOpen then
             DragInput = Input
         end
     end)
+
     UserInputService.InputChanged:Connect(function(Input)
         if DeltaXLib.UILocked then return end
         if Input == DragInput and Dragging and not DeltaXLib.IsPromptOpen then
@@ -107,11 +104,9 @@ local function MakeDraggable(Frame, DragHandle)
     end)
 end
 
-local function Ripple(Button, ClickX, ClickY)
+local function Ripple(Button)
     if DeltaXLib.IsPromptOpen then return end
     task.spawn(function()
-        local PosX = ClickX and (ClickX - Button.AbsolutePosition.X) or (Mouse.X - Button.AbsolutePosition.X)
-        local PosY = ClickY and (ClickY - Button.AbsolutePosition.Y) or (Mouse.Y - Button.AbsolutePosition.Y)
         local Circle = Create("ImageLabel", {
             Parent = Button,
             BackgroundTransparency = 1,
@@ -120,13 +115,13 @@ local function Ripple(Button, ClickX, ClickY)
             ImageTransparency = 0.65,
             ZIndex = 10,
             Size = UDim2.new(0, 0, 0, 0),
-            Position = UDim2.new(0, PosX, 0, PosY)
+            Position = UDim2.new(0, Mouse.X - Button.AbsolutePosition.X, 0, Mouse.Y - Button.AbsolutePosition.Y)
         })
         Button.ClipsDescendants = true
-        local Size = math.max(Button.AbsoluteSize.X, Button.AbsoluteSize.Y)
+        local Size = Button.AbsoluteSize.X > Button.AbsoluteSize.Y and Button.AbsoluteSize.X or Button.AbsoluteSize.Y
         ApplyTween(Circle, {
-            Size = UDim2.new(0, Size * 2.8, 0, Size * 2.8),
-            Position = UDim2.new(0.5, -Size * 1.4, 0.5, -Size * 1.4),
+            Size = UDim2.new(0, Size * 2.5, 0, Size * 2.5),
+            Position = UDim2.new(0.5, -Size * 1.25, 0.5, -Size * 1.25),
             ImageTransparency = 1
         }, 0.55)
         task.wait(0.55)
@@ -134,185 +129,194 @@ local function Ripple(Button, ClickX, ClickY)
     end)
 end
 
-local NotificationScreenGui = nil
 local NotificationContainer = nil
 
-local function EnsureNotificationGui()
-    if NotificationScreenGui and NotificationScreenGui.Parent then return end
-    NotificationScreenGui = Create("ScreenGui", {
-        Name = "DeltaX_Notifications",
-        Parent = CoreGui,
-        ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
-        ResetOnSpawn = false
-    })
+local function EnsureNotificationContainer(ScreenGui)
+    if NotificationContainer and NotificationContainer.Parent then return NotificationContainer end
     NotificationContainer = Create("Frame", {
-        Parent = NotificationScreenGui,
+        Name = "NotificationContainer",
+        Parent = ScreenGui,
         BackgroundTransparency = 1,
-        AnchorPoint = Vector2.new(1, 1),
-        Position = UDim2.new(1, -18, 1, -18),
-        Size = UDim2.new(0, 320, 1, -36)
+        Position = UDim2.new(1, -320, 0, 20),
+        Size = UDim2.new(0, 300, 1, -40),
+        ZIndex = 9000,
+        ClipsDescendants = false
     })
     Create("UIListLayout", {
         Parent = NotificationContainer,
-        VerticalAlignment = Enum.VerticalAlignment.Bottom,
-        HorizontalAlignment = Enum.HorizontalAlignment.Right,
         Padding = UDim.new(0, 8),
-        SortOrder = Enum.SortOrder.LayoutOrder
+        SortOrder = Enum.SortOrder.LayoutOrder,
+        VerticalAlignment = Enum.VerticalAlignment.Top
     })
+    return NotificationContainer
 end
 
-local NotificationCount = 0
+local NotifCount = 0
 
-local function ProcessNotificationQueue()
-    if DeltaXLib.NotificationActive then return end
-    if #DeltaXLib.NotificationQueue == 0 then return end
-    DeltaXLib.NotificationActive = true
-    local Data = table.remove(DeltaXLib.NotificationQueue, 1)
-    EnsureNotificationGui()
-    NotificationCount = NotificationCount + 1
+local function ShowNotification(ScreenGui, Options)
+    local Container = EnsureNotificationContainer(ScreenGui)
+    NotifCount = NotifCount + 1
+    local NType = Options.Type or "Info"
+    local NTitle = Options.Title or "通知"
+    local NMessage = Options.Message or ""
+    local NDuration = Options.Duration or 4
+    local NIcon = Options.Icon or ""
+
     local TypeColors = {
-        info    = DeltaXLib.Theme.Accent,
-        success = DeltaXLib.Theme.Success,
-        warning = DeltaXLib.Theme.Warning,
-        error   = DeltaXLib.Theme.Error
+        Info = Color3.fromRGB(0, 150, 255),
+        Success = Color3.fromRGB(50, 200, 100),
+        Warning = Color3.fromRGB(255, 160, 30),
+        Error = Color3.fromRGB(230, 60, 60)
     }
     local TypeIcons = {
-        info    = "rbxassetid://116492635500052",
-        success = "rbxassetid://6031068426",
-        warning = "rbxassetid://6031071053",
-        error   = "rbxassetid://6031071057"
+        Info = "rbxassetid://7072706796",
+        Success = "rbxassetid://7072725342",
+        Warning = "rbxassetid://7072720559",
+        Error = "rbxassetid://7072717857"
     }
-    local NType = Data.Type or "info"
-    local NColor = TypeColors[NType] or DeltaXLib.Theme.Accent
-    local NIcon = TypeIcons[NType] or TypeIcons.info
-    local NDuration = Data.Duration or 4
+    local AccentColor = TypeColors[NType] or TypeColors.Info
+    local IconImg = NIcon ~= "" and NIcon or (TypeIcons[NType] or TypeIcons.Info)
+
     local NFrame = Create("Frame", {
-        Parent = NotificationContainer,
-        BackgroundColor3 = Color3.fromRGB(20, 20, 28),
-        BackgroundTransparency = 0,
-        Size = UDim2.new(1, 0, 0, 74),
+        Parent = Container,
+        BackgroundColor3 = Color3.fromRGB(22, 22, 28),
+        Size = UDim2.new(1, 0, 0, 0),
         ClipsDescendants = true,
-        AnchorPoint = Vector2.new(1, 0),
-        LayoutOrder = NotificationCount
+        BackgroundTransparency = 0,
+        LayoutOrder = NotifCount,
+        ZIndex = 9001
     })
     Create("UICorner", {Parent = NFrame, CornerRadius = UDim.new(0, 16)})
-    Create("UIStroke", {Parent = NFrame, Color = NColor, Thickness = 1.5, Transparency = 0.5})
-    local AccentBar = Create("Frame", {
+    Create("UIStroke", {Parent = NFrame, Color = AccentColor, Thickness = 1.5, Transparency = 0.4})
+
+    local LeftBar = Create("Frame", {
         Parent = NFrame,
-        BackgroundColor3 = NColor,
+        BackgroundColor3 = AccentColor,
         Position = UDim2.new(0, 0, 0, 0),
-        Size = UDim2.new(0, 4, 1, 0)
+        Size = UDim2.new(0, 4, 1, 0),
+        ZIndex = 9002
     })
-    Create("UICorner", {Parent = AccentBar, CornerRadius = UDim.new(0, 4)})
-    local IconBG = Create("Frame", {
+    Create("UICorner", {Parent = LeftBar, CornerRadius = UDim.new(0, 16)})
+
+    local IconFrame = Create("Frame", {
         Parent = NFrame,
-        BackgroundColor3 = NColor,
-        BackgroundTransparency = 0.8,
-        Position = UDim2.new(0, 14, 0.5, -17),
-        Size = UDim2.new(0, 34, 0, 34)
+        BackgroundColor3 = AccentColor,
+        BackgroundTransparency = 0.75,
+        Position = UDim2.new(0, 14, 0, 12),
+        Size = UDim2.new(0, 32, 0, 32),
+        ZIndex = 9002
     })
-    Create("UICorner", {Parent = IconBG, CornerRadius = UDim.new(1, 0)})
+    Create("UICorner", {Parent = IconFrame, CornerRadius = UDim.new(1, 0)})
+
     Create("ImageLabel", {
-        Parent = IconBG,
+        Parent = IconFrame,
         BackgroundTransparency = 1,
-        Position = UDim2.new(0.12, 0, 0.12, 0),
-        Size = UDim2.new(0.76, 0, 0.76, 0),
-        Image = NIcon,
-        ImageColor3 = NColor,
-        ScaleType = Enum.ScaleType.Fit
+        Position = UDim2.new(0.15, 0, 0.15, 0),
+        Size = UDim2.new(0.7, 0, 0.7, 0),
+        Image = IconImg,
+        ImageColor3 = AccentColor,
+        ScaleType = Enum.ScaleType.Fit,
+        ZIndex = 9003
     })
+
     Create("TextLabel", {
         Parent = NFrame,
         BackgroundTransparency = 1,
-        Position = UDim2.new(0, 58, 0, 12),
-        Size = UDim2.new(1, -100, 0, 18),
+        Position = UDim2.new(0, 56, 0, 8),
+        Size = UDim2.new(1, -80, 0, 18),
         Font = Enum.Font.GothamBold,
-        Text = Data.Title or "通知",
-        TextColor3 = DeltaXLib.Theme.White,
+        Text = NTitle,
+        TextColor3 = Color3.fromRGB(240, 240, 240),
         TextSize = 13,
         TextXAlignment = Enum.TextXAlignment.Left,
-        TextTruncate = Enum.TextTruncate.AtEnd
+        ZIndex = 9002
     })
-    Create("TextLabel", {
+
+    local MsgLabel = Create("TextLabel", {
         Parent = NFrame,
         BackgroundTransparency = 1,
-        Position = UDim2.new(0, 58, 0, 32),
-        Size = UDim2.new(1, -100, 0, 30),
-        Font = Enum.Font.Gotham,
-        Text = Data.Content or "",
-        TextColor3 = DeltaXLib.Theme.TextDark,
+        Position = UDim2.new(0, 56, 0, 27),
+        Size = UDim2.new(1, -80, 0, 26),
+        Font = Enum.Font.GothamMedium,
+        Text = NMessage,
+        TextColor3 = Color3.fromRGB(170, 170, 185),
         TextSize = 11,
         TextXAlignment = Enum.TextXAlignment.Left,
-        TextYAlignment = Enum.TextYAlignment.Top,
-        TextWrapped = true
+        TextWrapped = true,
+        ZIndex = 9002
     })
+
+    local CloseX = Create("TextButton", {
+        Parent = NFrame,
+        BackgroundColor3 = Color3.fromRGB(55, 55, 65),
+        Position = UDim2.new(1, -30, 0, 8),
+        Size = UDim2.new(0, 20, 0, 20),
+        Font = Enum.Font.GothamBold,
+        Text = "×",
+        TextColor3 = Color3.fromRGB(180, 180, 180),
+        TextSize = 14,
+        ZIndex = 9004
+    })
+    Create("UICorner", {Parent = CloseX, CornerRadius = UDim.new(1, 0)})
+
     local ProgressBG = Create("Frame", {
         Parent = NFrame,
-        BackgroundColor3 = Color3.fromRGB(40, 40, 52),
-        Position = UDim2.new(0, 58, 1, -7),
-        Size = UDim2.new(1, -74, 0, 3)
+        BackgroundColor3 = Color3.fromRGB(40, 40, 50),
+        Position = UDim2.new(0, 8, 1, -6),
+        Size = UDim2.new(1, -16, 0, 3),
+        ZIndex = 9002
     })
     Create("UICorner", {Parent = ProgressBG, CornerRadius = UDim.new(1, 0)})
+
     local ProgressFill = Create("Frame", {
         Parent = ProgressBG,
-        BackgroundColor3 = NColor,
-        Size = UDim2.new(1, 0, 1, 0)
+        BackgroundColor3 = AccentColor,
+        Size = UDim2.new(1, 0, 1, 0),
+        ZIndex = 9003
     })
     Create("UICorner", {Parent = ProgressFill, CornerRadius = UDim.new(1, 0)})
-    local CloseNBtn = Create("TextButton", {
-        Parent = NFrame,
-        BackgroundColor3 = Color3.fromRGB(55, 55, 70),
-        Position = UDim2.new(1, -36, 0.5, -13),
-        Size = UDim2.new(0, 24, 0, 24),
-        Text = "×",
-        TextColor3 = Color3.fromRGB(175, 175, 190),
-        Font = Enum.Font.GothamBold,
-        TextSize = 14,
-        AutoButtonColor = false
-    })
-    Create("UICorner", {Parent = CloseNBtn, CornerRadius = UDim.new(1, 0)})
-    NFrame.Position = UDim2.new(1.5, 0, 0, 0)
-    ApplyTween(NFrame, {Position = UDim2.new(0, 0, 0, 0)}, 0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-    local Dismissed = false
-    local function DismissNotification()
-        if Dismissed then return end
-        Dismissed = true
-        ApplyTween(NFrame, {Position = UDim2.new(1.5, 0, 0, 0), BackgroundTransparency = 1}, 0.32)
+
+    NFrame.Size = UDim2.new(1, 0, 0, 0)
+    NFrame.BackgroundTransparency = 1
+    ApplyTween(NFrame, {Size = UDim2.new(1, 0, 0, 62), BackgroundTransparency = 0}, 0.35)
+
+    local Alive = true
+    local function DismissNotif()
+        if not Alive then return end
+        Alive = false
+        ApplyTween(NFrame, {Size = UDim2.new(1, 0, 0, 0), BackgroundTransparency = 1}, 0.3)
         task.wait(0.35)
         NFrame:Destroy()
-        DeltaXLib.NotificationActive = false
-        task.spawn(ProcessNotificationQueue)
     end
-    CloseNBtn.MouseButton1Click:Connect(DismissNotification)
-    task.spawn(function()
-        ApplyTween(ProgressFill, {Size = UDim2.new(0, 0, 1, 0)}, NDuration)
-        task.wait(NDuration)
-        DismissNotification()
-    end)
-end
 
-function DeltaXLib:Notify(Options)
-    table.insert(self.NotificationQueue, {
-        Title    = Options.Title or "通知",
-        Content  = Options.Content or "",
-        Type     = Options.Type or "info",
-        Duration = Options.Duration or 4
-    })
-    task.spawn(ProcessNotificationQueue)
+    CloseX.MouseButton1Click:Connect(DismissNotif)
+
+    task.spawn(function()
+        local Steps = 60
+        local StepTime = NDuration / Steps
+        for i = Steps, 0, -1 do
+            if not Alive then break end
+            ApplyTween(ProgressFill, {Size = UDim2.new(i / Steps, 0, 1, 0)}, StepTime + 0.01)
+            task.wait(StepTime)
+        end
+        DismissNotif()
+    end)
+
+    return {Dismiss = DismissNotif}
 end
 
 function DeltaXLib:CreateWindow(Options)
     local Config = {
-        Title      = Options.Title or "Delta X",
-        SubTitle   = Options.SubTitle or "V3.0",
+        Title = Options.Title or "Delta X",
+        SubTitle = Options.SubTitle or "V2.0",
         FooterText = Options.Footer or "Delta X Lib",
-        IconId     = Options.Icon or "",
-        TitleIcon  = Options.TitleIcon or "",
-        BgImg      = Options.BackgroundImage or ""
+        IconId = Options.Icon or "",
+        TitleIcon = Options.TitleIcon or "",
+        BgImg = Options.BackgroundImage or ""
     }
 
     local ScreenGui = Create("ScreenGui", {
-        Name = "DeltaX_V3_PRO",
+        Name = "DeltaX_V2_PRO",
         Parent = CoreGui,
         ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
         ResetOnSpawn = false
@@ -321,7 +325,7 @@ function DeltaXLib:CreateWindow(Options)
     local MinimizedBall = Create("Frame", {
         Name = "MinimizedBall",
         Parent = ScreenGui,
-        BackgroundColor3 = Color3.fromRGB(18, 18, 24),
+        BackgroundColor3 = DeltaXLib.Theme.Accent,
         Position = UDim2.new(0.05, 0, 0.4, 0),
         Size = UDim2.new(0, 0, 0, 0),
         Visible = false,
@@ -329,48 +333,48 @@ function DeltaXLib:CreateWindow(Options)
         ClipsDescendants = false
     })
     Create("UICorner", {Parent = MinimizedBall, CornerRadius = UDim.new(1, 0)})
-    Create("UIStroke", {Parent = MinimizedBall, Color = DeltaXLib.Theme.Accent, Thickness = 2.5, Transparency = 0.2})
+    Create("UIStroke", {Parent = MinimizedBall, Color = Color3.fromRGB(255,255,255), Thickness = 2, Transparency = 0.7})
 
-    Create("ImageLabel", {
+    local BallGlow = Create("ImageLabel", {
         Parent = MinimizedBall,
         BackgroundTransparency = 1,
-        Image = "rbxassetid://5028857472",
+        Position = UDim2.new(-0.3, 0, -0.3, 0),
+        Size = UDim2.new(1.6, 0, 1.6, 0),
+        Image = "rbxassetid://5028857084",
         ImageColor3 = DeltaXLib.Theme.Accent,
-        ImageTransparency = 0.7,
-        Position = UDim2.new(-0.25, 0, -0.25, 0),
-        Size = UDim2.new(1.5, 0, 1.5, 0),
+        ImageTransparency = 0.6,
         ZIndex = 1999
     })
 
-    Create("ImageLabel", {
+    local BallIcon = Create("ImageLabel", {
         Parent = MinimizedBall,
         BackgroundTransparency = 1,
-        Size = UDim2.new(0.6, 0, 0.6, 0),
-        Position = UDim2.new(0.2, 0, 0.2, 0),
+        Position = UDim2.new(0.18, 0, 0.18, 0),
+        Size = UDim2.new(0.64, 0, 0.64, 0),
         Image = Config.IconId,
         ImageColor3 = DeltaXLib.Theme.White,
         ScaleType = Enum.ScaleType.Fit,
         ZIndex = 2001
     })
+    Create("UICorner", {Parent = BallIcon, CornerRadius = UDim.new(1, 0)})
 
-    local BallLockIcon = Create("ImageLabel", {
-        Parent = MinimizedBall,
-        BackgroundTransparency = 1,
-        Size = UDim2.new(0.35, 0, 0.35, 0),
-        Position = UDim2.new(0.62, 0, 0.62, 0),
-        Image = "rbxassetid://6031225819",
-        ImageColor3 = DeltaXLib.Theme.Warning,
-        ScaleType = Enum.ScaleType.Fit,
-        ZIndex = 2003,
-        Visible = false
-    })
-
-    local BallClickZone = Create("TextButton", {
+    local BallHitArea = Create("TextButton", {
         Parent = MinimizedBall,
         BackgroundTransparency = 1,
         Size = UDim2.new(1, 0, 1, 0),
         Text = "",
         ZIndex = 2002
+    })
+
+    local BallLockIcon = Create("ImageLabel", {
+        Parent = MinimizedBall,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0.62, 0, 0.62, 0),
+        Size = UDim2.new(0.38, 0, 0.38, 0),
+        Image = "rbxassetid://6031094678",
+        ImageColor3 = Color3.fromRGB(255,255,100),
+        ImageTransparency = 1,
+        ZIndex = 2003
     })
 
     MakeDraggable(MinimizedBall, MinimizedBall)
@@ -383,11 +387,13 @@ function DeltaXLib:CreateWindow(Options)
         Position = UDim2.new(0.5, 0, 0.5, 0),
         Size = UDim2.new(0, 0, 0, 0),
         ClipsDescendants = true,
-        ZIndex = 1,
-        Visible = true
+        ZIndex = 1
     })
     Create("UICorner", {Parent = MainFrame, CornerRadius = UDim.new(0, 18)})
     MakeDraggable(MainFrame, MainFrame)
+
+    MainFrame.Visible = true
+    TweenService:Create(MainFrame, TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 620, 0, 420)}):Play()
 
     if Config.BgImg ~= "" then
         Create("ImageLabel", {
@@ -411,222 +417,109 @@ function DeltaXLib:CreateWindow(Options)
     local BorderGradient = Create("UIGradient", {
         Parent = BorderStroke,
         Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0,   Color3.fromHSV(0,   0.75, 1)),
-            ColorSequenceKeypoint.new(0.2, Color3.fromHSV(0.2, 0.75, 1)),
-            ColorSequenceKeypoint.new(0.4, Color3.fromHSV(0.4, 0.75, 1)),
-            ColorSequenceKeypoint.new(0.6, Color3.fromHSV(0.6, 0.75, 1)),
-            ColorSequenceKeypoint.new(0.8, Color3.fromHSV(0.8, 0.75, 1)),
-            ColorSequenceKeypoint.new(1,   Color3.fromHSV(1,   0.75, 1))
+            ColorSequenceKeypoint.new(0, Color3.fromHSV(0, 0.8, 1)),
+            ColorSequenceKeypoint.new(0.2, Color3.fromHSV(0.2, 0.8, 1)),
+            ColorSequenceKeypoint.new(0.4, Color3.fromHSV(0.4, 0.8, 1)),
+            ColorSequenceKeypoint.new(0.6, Color3.fromHSV(0.6, 0.8, 1)),
+            ColorSequenceKeypoint.new(0.8, Color3.fromHSV(0.8, 0.8, 1)),
+            ColorSequenceKeypoint.new(1, Color3.fromHSV(1, 0.8, 1))
         })
     })
-    local RotConn
-    RotConn = RunService.RenderStepped:Connect(function(Delta)
+
+    local RotationConnection
+    RotationConnection = RunService.RenderStepped:Connect(function(Delta)
         if not MainFrame or not MainFrame.Parent then
-            RotConn:Disconnect()
+            RotationConnection:Disconnect()
             return
         end
-        BorderGradient.Rotation = (BorderGradient.Rotation + (90 * Delta)) % 360
+        BorderGradient.Rotation = (BorderGradient.Rotation + (110 * Delta)) % 360
     end)
 
     local SideBar = Create("Frame", {
         Parent = MainFrame,
         BackgroundColor3 = DeltaXLib.Theme.Secondary,
-        BackgroundTransparency = 0.1,
+        BackgroundTransparency = 0.15,
         Size = UDim2.new(0, 165, 1, 0),
         ZIndex = 2
     })
     Create("UICorner", {Parent = SideBar, CornerRadius = UDim.new(0, 18)})
 
-    Create("Frame", {
+    local SideBarRight = Create("Frame", {
         Parent = SideBar,
         BackgroundColor3 = DeltaXLib.Theme.Secondary,
-        BackgroundTransparency = 0.1,
-        Position = UDim2.new(1, -10, 0, 0),
-        Size = UDim2.new(0, 10, 1, 0),
-        ZIndex = 2
+        BackgroundTransparency = 0.15,
+        Position = UDim2.new(1, -18, 0, 0),
+        Size = UDim2.new(0, 18, 1, 0),
+        ZIndex = 1
     })
 
     local LogoArea = Create("Frame", {
         Parent = SideBar,
         BackgroundTransparency = 1,
-        Size = UDim2.new(1, 0, 0, 85),
-        ZIndex = 3
+        Size = UDim2.new(1, 0, 0, 84)
     })
 
-    local HeaderIconBG = Create("Frame", {
-        Parent = LogoArea,
-        BackgroundColor3 = DeltaXLib.Theme.Accent,
-        BackgroundTransparency = 0.8,
-        Position = UDim2.new(0, 14, 0, 22),
-        Size = UDim2.new(0, 38, 0, 38),
-        ZIndex = 4
-    })
-    Create("UICorner", {Parent = HeaderIconBG, CornerRadius = UDim.new(0, 10)})
-
-    Create("ImageLabel", {
-        Parent = HeaderIconBG,
+    local FooterLabel = Create("TextLabel", {
+        Parent = SideBar,
         BackgroundTransparency = 1,
-        Position = UDim2.new(0.1, 0, 0.1, 0),
-        Size = UDim2.new(0.8, 0, 0.8, 0),
-        Image = Config.TitleIcon,
-        ImageColor3 = DeltaXLib.Theme.Accent,
-        ScaleType = Enum.ScaleType.Fit,
-        ZIndex = 5
-    })
-
-    Create("TextLabel", {
-        Parent = LogoArea,
-        BackgroundTransparency = 1,
-        Position = UDim2.new(0, 62, 0, 24),
-        Size = UDim2.new(1, -72, 0, 22),
-        Font = Enum.Font.GothamBold,
-        Text = Config.Title,
-        TextColor3 = DeltaXLib.Theme.Accent,
-        TextSize = 17,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        ZIndex = 3
-    })
-
-    Create("TextLabel", {
-        Parent = LogoArea,
-        BackgroundTransparency = 1,
-        Position = UDim2.new(0, 62, 0, 46),
-        Size = UDim2.new(1, -72, 0, 18),
+        Position = UDim2.new(0, 12, 1, -28),
+        Size = UDim2.new(1, -24, 0, 18),
         Font = Enum.Font.GothamMedium,
-        Text = Config.SubTitle,
-        TextColor3 = DeltaXLib.Theme.TextDark,
+        Text = Config.FooterText,
+        TextColor3 = Color3.fromRGB(90, 90, 105),
         TextSize = 10,
         TextXAlignment = Enum.TextXAlignment.Left,
         ZIndex = 3
     })
 
-    Create("Frame", {
-        Parent = SideBar,
-        BackgroundColor3 = DeltaXLib.Theme.Accent,
-        BackgroundTransparency = 0.82,
-        Position = UDim2.new(0, 10, 0, 83),
-        Size = UDim2.new(1, -20, 0, 1),
-        ZIndex = 3
+    local HeaderIcon = Create("ImageLabel", {
+        Parent = LogoArea,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, 14, 0, 22),
+        Size = UDim2.new(0, 36, 0, 36),
+        Image = Config.TitleIcon,
+        ImageColor3 = Color3.fromRGB(255, 255, 255),
+        ScaleType = Enum.ScaleType.Fit
+    })
+
+    local TitleLabel = Create("TextLabel", {
+        Parent = LogoArea,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, 58, 0, 20),
+        Size = UDim2.new(1, -66, 0, 24),
+        Font = Enum.Font.GothamBold,
+        Text = Config.Title,
+        TextColor3 = DeltaXLib.Theme.Accent,
+        TextSize = 17,
+        TextXAlignment = Enum.TextXAlignment.Left
+    })
+
+    local SubLabel = Create("TextLabel", {
+        Parent = LogoArea,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, 58, 0, 44),
+        Size = UDim2.new(1, -66, 0, 18),
+        Font = Enum.Font.GothamMedium,
+        Text = Config.SubTitle,
+        TextColor3 = DeltaXLib.Theme.TextDark,
+        TextSize = 10,
+        TextXAlignment = Enum.TextXAlignment.Left
     })
 
     local TabContainer = Create("ScrollingFrame", {
         Parent = SideBar,
         BackgroundTransparency = 1,
-        Position = UDim2.new(0, 8, 0, 92),
-        Size = UDim2.new(1, -16, 1, -162),
+        Position = UDim2.new(0, 10, 0, 88),
+        Size = UDim2.new(1, -20, 1, -158),
         CanvasSize = UDim2.new(0, 0, 0, 0),
         ScrollBarThickness = 0,
-        AutomaticCanvasSize = Enum.AutomaticSize.Y,
-        ZIndex = 3
-    })
-    Create("UIListLayout", {Parent = TabContainer, Padding = UDim.new(0, 5), SortOrder = Enum.SortOrder.Name})
-
-    local FooterArea = Create("Frame", {
-        Parent = SideBar,
-        BackgroundTransparency = 1,
-        Position = UDim2.new(0, 0, 1, -68),
-        Size = UDim2.new(1, 0, 0, 68),
-        ZIndex = 3
+        AutomaticCanvasSize = Enum.AutomaticSize.Y
     })
 
-    Create("Frame", {
-        Parent = FooterArea,
-        BackgroundColor3 = DeltaXLib.Theme.Accent,
-        BackgroundTransparency = 0.82,
-        Position = UDim2.new(0, 10, 0, 0),
-        Size = UDim2.new(1, -20, 0, 1),
-        ZIndex = 3
-    })
-
-    local LockBtnFrame = Create("Frame", {
-        Parent = FooterArea,
-        BackgroundColor3 = Color3.fromRGB(30, 30, 40),
-        Position = UDim2.new(0, 8, 0, 8),
-        Size = UDim2.new(1, -16, 0, 34),
-        ZIndex = 3
-    })
-    Create("UICorner", {Parent = LockBtnFrame, CornerRadius = UDim.new(0, 10)})
-    Create("UIStroke", {Parent = LockBtnFrame, Color = DeltaXLib.Theme.Accent, Thickness = 1, Transparency = 0.7})
-
-    local LockIcon = Create("ImageLabel", {
-        Parent = LockBtnFrame,
-        BackgroundTransparency = 1,
-        Position = UDim2.new(0, 8, 0.5, -9),
-        Size = UDim2.new(0, 18, 0, 18),
-        Image = "rbxassetid://6031225819",
-        ImageColor3 = DeltaXLib.Theme.TextDark,
-        ScaleType = Enum.ScaleType.Fit,
-        ZIndex = 4
-    })
-
-    local LockLabel = Create("TextLabel", {
-        Parent = LockBtnFrame,
-        BackgroundTransparency = 1,
-        Position = UDim2.new(0, 32, 0, 0),
-        Size = UDim2.new(1, -60, 1, 0),
-        Font = Enum.Font.GothamMedium,
-        Text = "UI 锁定",
-        TextColor3 = DeltaXLib.Theme.TextDark,
-        TextSize = 12,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        ZIndex = 4
-    })
-
-    local LockTrack = Create("Frame", {
-        Parent = LockBtnFrame,
-        BackgroundColor3 = Color3.fromRGB(60, 60, 75),
-        Position = UDim2.new(1, -34, 0.5, -8),
-        Size = UDim2.new(0, 28, 0, 16),
-        ZIndex = 4
-    })
-    Create("UICorner", {Parent = LockTrack, CornerRadius = UDim.new(1, 0)})
-
-    local LockKnob = Create("Frame", {
-        Parent = LockTrack,
-        BackgroundColor3 = DeltaXLib.Theme.White,
-        Position = UDim2.new(0, 2, 0.5, -5),
-        Size = UDim2.new(0, 12, 0, 12),
-        ZIndex = 5
-    })
-    Create("UICorner", {Parent = LockKnob, CornerRadius = UDim.new(1, 0)})
-
-    local LockClickBtn = Create("TextButton", {
-        Parent = LockBtnFrame,
-        BackgroundTransparency = 1,
-        Size = UDim2.new(1, 0, 1, 0),
-        Text = "",
-        ZIndex = 6
-    })
-
-    LockClickBtn.MouseButton1Click:Connect(function()
-        DeltaXLib.UILocked = not DeltaXLib.UILocked
-        if DeltaXLib.UILocked then
-            ApplyTween(LockTrack, {BackgroundColor3 = DeltaXLib.Theme.Warning}, 0.25)
-            ApplyTween(LockKnob, {Position = UDim2.new(1, -14, 0.5, -5)}, 0.25)
-            ApplyTween(LockIcon, {ImageColor3 = DeltaXLib.Theme.Warning}, 0.25)
-            ApplyTween(LockLabel, {TextColor3 = DeltaXLib.Theme.Warning}, 0.25)
-            BallLockIcon.Visible = true
-        else
-            ApplyTween(LockTrack, {BackgroundColor3 = Color3.fromRGB(60, 60, 75)}, 0.25)
-            ApplyTween(LockKnob, {Position = UDim2.new(0, 2, 0.5, -5)}, 0.25)
-            ApplyTween(LockIcon, {ImageColor3 = DeltaXLib.Theme.TextDark}, 0.25)
-            ApplyTween(LockLabel, {TextColor3 = DeltaXLib.Theme.TextDark}, 0.25)
-            BallLockIcon.Visible = false
-        end
-        Ripple(LockBtnFrame)
-    end)
-
-    Create("TextLabel", {
-        Parent = FooterArea,
-        BackgroundTransparency = 1,
-        Position = UDim2.new(0, 10, 0, 47),
-        Size = UDim2.new(1, -20, 0, 18),
-        Font = Enum.Font.GothamMedium,
-        Text = Config.FooterText,
-        TextColor3 = Color3.fromRGB(80, 80, 100),
-        TextSize = 10,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        ZIndex = 3
+    local TabListLayout = Create("UIListLayout", {
+        Parent = TabContainer,
+        Padding = UDim.new(0, 6),
+        SortOrder = Enum.SortOrder.Name
     })
 
     local TopArea = Create("Frame", {
@@ -640,27 +533,33 @@ function DeltaXLib:CreateWindow(Options)
     local ControlBtns = Create("Frame", {
         Parent = TopArea,
         BackgroundTransparency = 1,
-        Position = UDim2.new(1, -74, 0.5, -15),
-        Size = UDim2.new(0, 64, 0, 30)
+        Position = UDim2.new(1, -118, 0.5, -15),
+        Size = UDim2.new(0, 108, 0, 30)
     })
 
-    local CloseBtn = Create("TextButton", {
+    local LockBtn = Create("TextButton", {
         Parent = ControlBtns,
-        BackgroundColor3 = Color3.fromRGB(255, 75, 75),
-        Position = UDim2.new(1, -30, 0, 0),
+        BackgroundColor3 = Color3.fromRGB(80, 180, 255),
+        Position = UDim2.new(0, 0, 0, 0),
         Size = UDim2.new(0, 30, 0, 30),
-        Text = "×",
-        TextColor3 = DeltaXLib.Theme.White,
-        Font = Enum.Font.GothamBold,
-        TextSize = 18,
+        Text = "",
         AutoButtonColor = false
     })
-    Create("UICorner", {Parent = CloseBtn, CornerRadius = UDim.new(1, 0)})
+    Create("UICorner", {Parent = LockBtn, CornerRadius = UDim.new(1, 0)})
+    local LockIconImg = Create("ImageLabel", {
+        Parent = LockBtn,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0.18, 0, 0.18, 0),
+        Size = UDim2.new(0.64, 0, 0.64, 0),
+        Image = "rbxassetid://6031094678",
+        ImageColor3 = Color3.fromRGB(255,255,255),
+        ScaleType = Enum.ScaleType.Fit
+    })
 
     local MinBtn = Create("TextButton", {
         Parent = ControlBtns,
-        BackgroundColor3 = Color3.fromRGB(255, 165, 50),
-        Position = UDim2.new(0, 0, 0, 0),
+        BackgroundColor3 = Color3.fromRGB(255, 160, 50),
+        Position = UDim2.new(0, 40, 0, 0),
         Size = UDim2.new(0, 30, 0, 30),
         Text = "−",
         TextColor3 = DeltaXLib.Theme.White,
@@ -670,22 +569,35 @@ function DeltaXLib:CreateWindow(Options)
     })
     Create("UICorner", {Parent = MinBtn, CornerRadius = UDim.new(1, 0)})
 
+    local CloseBtn = Create("TextButton", {
+        Parent = ControlBtns,
+        BackgroundColor3 = Color3.fromRGB(255, 70, 70),
+        Position = UDim2.new(0, 78, 0, 0),
+        Size = UDim2.new(0, 30, 0, 30),
+        Text = "×",
+        TextColor3 = DeltaXLib.Theme.White,
+        Font = Enum.Font.GothamBold,
+        TextSize = 20,
+        AutoButtonColor = false
+    })
+    Create("UICorner", {Parent = CloseBtn, CornerRadius = UDim.new(1, 0)})
+
     local SearchBoxFrame = Create("Frame", {
         Parent = TopArea,
-        BackgroundColor3 = Color3.fromRGB(32, 32, 42),
-        Position = UDim2.new(0, 10, 0.5, -16),
-        Size = UDim2.new(0, 210, 0, 32)
+        BackgroundColor3 = Color3.fromRGB(38, 38, 48),
+        Position = UDim2.new(0, 10, 0.5, -15),
+        Size = UDim2.new(0, 200, 0, 30)
     })
-    Create("UICorner", {Parent = SearchBoxFrame, CornerRadius = UDim.new(0, 16)})
-    Create("UIStroke", {Parent = SearchBoxFrame, Color = DeltaXLib.Theme.Accent, Thickness = 1, Transparency = 0.75})
+    Create("UICorner", {Parent = SearchBoxFrame, CornerRadius = UDim.new(0, 15)})
+    Create("UIStroke", {Parent = SearchBoxFrame, Color = DeltaXLib.Theme.Accent, Thickness = 1, Transparency = 0.7})
 
-    Create("ImageLabel", {
+    local SearchIcon = Create("ImageLabel", {
         Parent = SearchBoxFrame,
         BackgroundTransparency = 1,
-        Position = UDim2.new(0, 9, 0.5, -8),
-        Size = UDim2.new(0, 16, 0, 16),
+        Position = UDim2.new(0, 8, 0.5, -9),
+        Size = UDim2.new(0, 18, 0, 18),
         Image = "rbxassetid://85328226988655",
-        ImageColor3 = DeltaXLib.Theme.TextDark,
+        ImageColor3 = Color3.fromRGB(150, 150, 165),
         ScaleType = Enum.ScaleType.Fit
     })
 
@@ -698,7 +610,7 @@ function DeltaXLib:CreateWindow(Options)
         PlaceholderText = "搜索功能...",
         Text = "",
         TextColor3 = DeltaXLib.Theme.White,
-        PlaceholderColor3 = DeltaXLib.Theme.Placeholder,
+        PlaceholderColor3 = Color3.fromRGB(120, 120, 130),
         TextSize = 12,
         TextXAlignment = Enum.TextXAlignment.Left
     })
@@ -706,8 +618,8 @@ function DeltaXLib:CreateWindow(Options)
     local ContentHolder = Create("Frame", {
         Parent = MainFrame,
         BackgroundTransparency = 1,
-        Position = UDim2.new(0, 172, 0, 58),
-        Size = UDim2.new(1, -184, 1, -68),
+        Position = UDim2.new(0, 175, 0, 60),
+        Size = UDim2.new(1, -185, 1, -70),
         ZIndex = 1
     })
 
@@ -723,7 +635,7 @@ function DeltaXLib:CreateWindow(Options)
 
     local PromptFrame = Create("Frame", {
         Parent = MainFrame,
-        BackgroundColor3 = Color3.fromRGB(22, 22, 30),
+        BackgroundColor3 = Color3.fromRGB(22, 22, 28),
         AnchorPoint = Vector2.new(0.5, 0.5),
         Position = UDim2.new(0.5, 0, 0.5, 0),
         Size = UDim2.new(0, 0, 0, 0),
@@ -731,96 +643,81 @@ function DeltaXLib:CreateWindow(Options)
         ClipsDescendants = true,
         Visible = false
     })
-    Create("UICorner", {Parent = PromptFrame, CornerRadius = UDim.new(0, 18)})
-    Create("UIStroke", {Parent = PromptFrame, Color = DeltaXLib.Theme.Error, Thickness = 2, Transparency = 0.3})
+    Create("UICorner", {Parent = PromptFrame, CornerRadius = UDim.new(0, 20)})
+    Create("UIStroke", {Parent = PromptFrame, Color = Color3.fromRGB(255,70,70), Thickness = 1.5, Transparency = 0.3})
 
-    local PromptIconBG = Create("Frame", {
+    local PromptIcon = Create("ImageLabel", {
         Parent = PromptFrame,
-        BackgroundColor3 = DeltaXLib.Theme.Error,
-        BackgroundTransparency = 0.8,
-        Position = UDim2.new(0, 18, 0, 18),
-        Size = UDim2.new(0, 30, 0, 30),
-        ZIndex = 502
-    })
-    Create("UICorner", {Parent = PromptIconBG, CornerRadius = UDim.new(1, 0)})
-    Create("ImageLabel", {
-        Parent = PromptIconBG,
         BackgroundTransparency = 1,
-        Position = UDim2.new(0.1, 0, 0.1, 0),
-        Size = UDim2.new(0.8, 0, 0.8, 0),
+        Position = UDim2.new(0, 16, 0, 16),
+        Size = UDim2.new(0, 26, 0, 26),
         Image = "rbxassetid://116492635500052",
-        ImageColor3 = DeltaXLib.Theme.Error,
-        ScaleType = Enum.ScaleType.Fit,
-        ZIndex = 503
+        ScaleType = Enum.ScaleType.Fit
     })
 
-    Create("TextLabel", {
+    local PromptTitle = Create("TextLabel", {
         Parent = PromptFrame,
         BackgroundTransparency = 1,
-        Position = UDim2.new(0, 58, 0, 18),
-        Size = UDim2.new(1, -70, 0, 30),
+        Position = UDim2.new(0, 52, 0, 16),
+        Size = UDim2.new(1, -62, 0, 26),
         Font = Enum.Font.GothamBold,
         Text = "确认关闭",
         TextColor3 = DeltaXLib.Theme.White,
-        TextSize = 16,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        ZIndex = 502
+        TextSize = 15,
+        TextXAlignment = Enum.TextXAlignment.Left
     })
 
-    Create("TextLabel", {
+    local PromptContent = Create("TextLabel", {
         Parent = PromptFrame,
         BackgroundTransparency = 1,
-        Position = UDim2.new(0, 18, 0, 56),
-        Size = UDim2.new(1, -36, 0, 46),
+        Position = UDim2.new(0, 16, 0, 52),
+        Size = UDim2.new(1, -32, 0, 42),
         Font = Enum.Font.Gotham,
-        Text = "你确定是否关闭这个脚本?\n关闭后将无法再次打开！",
+        Text = "你确定是否关闭这个脚本?关闭后将无法再次打开！",
         TextColor3 = DeltaXLib.Theme.TextDark,
         TextSize = 13,
         TextWrapped = true,
-        TextYAlignment = Enum.TextYAlignment.Top,
-        ZIndex = 502
+        TextYAlignment = Enum.TextYAlignment.Top
     })
 
     local PromptCancel = Create("TextButton", {
         Parent = PromptFrame,
-        BackgroundColor3 = Color3.fromRGB(45, 180, 100),
-        Position = UDim2.new(0.06, 0, 1, -48),
-        Size = UDim2.new(0.41, 0, 0, 36),
+        BackgroundColor3 = Color3.fromRGB(50, 180, 100),
+        Position = UDim2.new(0.05, 0, 1, -46),
+        Size = UDim2.new(0.42, 0, 0, 36),
         Font = Enum.Font.GothamBold,
         Text = "取消",
         TextColor3 = DeltaXLib.Theme.White,
         TextSize = 14,
-        AutoButtonColor = false,
-        ZIndex = 502
+        AutoButtonColor = false
     })
-    Create("UICorner", {Parent = PromptCancel, CornerRadius = UDim.new(0, 10)})
+    Create("UICorner", {Parent = PromptCancel, CornerRadius = UDim.new(0, 12)})
 
     local PromptConfirm = Create("TextButton", {
         Parent = PromptFrame,
-        BackgroundColor3 = Color3.fromRGB(210, 55, 55),
-        Position = UDim2.new(0.53, 0, 1, -48),
-        Size = UDim2.new(0.41, 0, 0, 36),
+        BackgroundColor3 = Color3.fromRGB(200, 50, 50),
+        Position = UDim2.new(0.53, 0, 1, -46),
+        Size = UDim2.new(0.42, 0, 0, 36),
         Font = Enum.Font.GothamBold,
         Text = "确认",
         TextColor3 = DeltaXLib.Theme.White,
         TextSize = 14,
-        AutoButtonColor = false,
-        ZIndex = 502
+        AutoButtonColor = false
     })
-    Create("UICorner", {Parent = PromptConfirm, CornerRadius = UDim.new(0, 10)})
+    Create("UICorner", {Parent = PromptConfirm, CornerRadius = UDim.new(0, 12)})
 
     CloseBtn.MouseButton1Click:Connect(function()
         DeltaXLib.IsPromptOpen = true
         PromptMask.Visible = true
         PromptFrame.Visible = true
         PromptFrame.Size = UDim2.new(0, 0, 0, 0)
-        ApplyTween(PromptMask, {BackgroundTransparency = 0.45}, 0.3)
-        TweenService:Create(PromptFrame, TweenInfo.new(0.38, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 300, 0, 162)}):Play()
+        ApplyTween(PromptMask, {BackgroundTransparency = 0.5}, 0.3)
+        TweenService:Create(PromptFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 310, 0, 158)}):Play()
     end)
 
     PromptCancel.MouseButton1Click:Connect(function()
-        local HidePrompt = TweenService:Create(PromptFrame, TweenInfo.new(0.28, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size = UDim2.new(0, 0, 0, 0)})
-        ApplyTween(PromptMask, {BackgroundTransparency = 1}, 0.28)
+        local HidePrompt = TweenService:Create(PromptFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size = UDim2.new(0, 0, 0, 0)})
+        ApplyTween(PromptMask, {BackgroundTransparency = 1}, 0.3)
         HidePrompt:Play()
         HidePrompt.Completed:Connect(function()
             PromptMask.Visible = false
@@ -831,8 +728,27 @@ function DeltaXLib:CreateWindow(Options)
 
     PromptConfirm.MouseButton1Click:Connect(function()
         TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size = UDim2.new(0, 0, 0, 0), BackgroundTransparency = 1}):Play()
-        task.wait(0.32)
+        task.wait(0.35)
         ScreenGui:Destroy()
+    end)
+
+    LockBtn.MouseButton1Click:Connect(function()
+        DeltaXLib.UILocked = not DeltaXLib.UILocked
+        if DeltaXLib.UILocked then
+            ApplyTween(LockBtn, {BackgroundColor3 = Color3.fromRGB(255, 200, 50)}, 0.25)
+            ApplyTween(LockIconImg, {ImageColor3 = Color3.fromRGB(30, 30, 30)}, 0.25)
+            ApplyTween(BallLockIcon, {ImageTransparency = 0}, 0.3)
+        else
+            ApplyTween(LockBtn, {BackgroundColor3 = Color3.fromRGB(80, 180, 255)}, 0.25)
+            ApplyTween(LockIconImg, {ImageColor3 = Color3.fromRGB(255, 255, 255)}, 0.25)
+            ApplyTween(BallLockIcon, {ImageTransparency = 1}, 0.3)
+        end
+        ShowNotification(ScreenGui, {
+            Type = DeltaXLib.UILocked and "Warning" or "Success",
+            Title = DeltaXLib.UILocked and "UI 已锁定" or "UI 已解锁",
+            Message = DeltaXLib.UILocked and "拖动功能已禁用，点击锁定按钮解锁" or "拖动功能已恢复正常",
+            Duration = 2.5
+        })
     end)
 
     MinBtn.MouseButton1Click:Connect(function()
@@ -847,26 +763,15 @@ function DeltaXLib:CreateWindow(Options)
         end)
     end)
 
-    local BallClickStart = nil
-    BallClickZone.InputBegan:Connect(function(Input)
-        if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-            BallClickStart = tick()
-        end
-    end)
-
-    BallClickZone.InputEnded:Connect(function(Input)
-        if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-            if BallClickStart and (tick() - BallClickStart) < 0.22 and not DeltaXLib.IsDraggingUI then
-                local BallHide = TweenService:Create(MinimizedBall, TweenInfo.new(0.28, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size = UDim2.new(0, 0, 0, 0)})
-                BallHide:Play()
-                BallHide.Completed:Connect(function()
-                    MinimizedBall.Visible = false
-                    MainFrame.Visible = true
-                    TweenService:Create(MainFrame, TweenInfo.new(0.42, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 620, 0, 420)}):Play()
-                end)
-            end
-            BallClickStart = nil
-        end
+    BallHitArea.MouseButton1Click:Connect(function()
+        if DeltaXLib.IsDraggingUI then return end
+        local BallHide = TweenService:Create(MinimizedBall, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size = UDim2.new(0, 0, 0, 0)})
+        BallHide:Play()
+        BallHide.Completed:Connect(function()
+            MinimizedBall.Visible = false
+            MainFrame.Visible = true
+            TweenService:Create(MainFrame, TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 620, 0, 420)}):Play()
+        end)
     end)
 
     SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
@@ -878,6 +783,7 @@ function DeltaXLib:CreateWindow(Options)
         table.sort(AllTabs, function(a, b) return a.Name < b.Name end)
         local FirstTab = AllTabs[1]
         if not FirstTab then return end
+
         if DeltaXLib.SearchQuery ~= "" then
             for i, TabPage in ipairs(AllTabs) do
                 TabPage.Visible = (i == 1)
@@ -893,8 +799,7 @@ function DeltaXLib:CreateWindow(Options)
                                         SubItem.Parent = FirstTab
                                         if not SubItem:FindFirstChild("OldSection") then
                                             local Tag = Instance.new("StringValue", SubItem)
-                                            Tag.Name = "OldSection"
-                                            Tag.Value = Component.Name
+                                            Tag.Name = "OldSection"; Tag.Value = Component.Name
                                         end
                                     else
                                         SubItem.Visible = false
@@ -911,8 +816,7 @@ function DeltaXLib:CreateWindow(Options)
                                 Component.Parent = FirstTab
                                 if not Component:FindFirstChild("OldTab") then
                                     local Tag = Instance.new("StringValue", Component)
-                                    Tag.Name = "OldTab"
-                                    Tag.Value = TabPage.Name
+                                    Tag.Name = "OldTab"; Tag.Value = TabPage.Name
                                 end
                             end
                         else
@@ -951,50 +855,40 @@ function DeltaXLib:CreateWindow(Options)
     end)
 
     local TabCount = 0
-    function DeltaXLib:CreateTab(Name, IconId)
+    function DeltaXLib:CreateTab(Name)
         TabCount = TabCount + 1
-        local TabBtn = Create("Frame", {
+
+        local TabBtn = Create("TextButton", {
             Parent = TabContainer,
             BackgroundColor3 = DeltaXLib.Theme.Secondary,
             Size = UDim2.new(1, 0, 0, 40),
+            Font = Enum.Font.GothamBold,
+            Text = "",
+            TextColor3 = DeltaXLib.Theme.TextDark,
+            TextSize = 13,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            AutoButtonColor = false,
             Name = string.format("%02d", TabCount) .. "_" .. Name,
-            LayoutOrder = TabCount
+            LayoutOrder = TabCount,
+            ClipsDescendants = true
         })
         Create("UICorner", {Parent = TabBtn, CornerRadius = UDim.new(0, 12)})
 
-        local TabActiveLine = Create("Frame", {
+        local TabBtnIcon = Create("ImageLabel", {
             Parent = TabBtn,
-            BackgroundColor3 = DeltaXLib.Theme.Accent,
-            Position = UDim2.new(0, 0, 0.2, 0),
-            Size = UDim2.new(0, 3, 0.6, 0),
-            Visible = false
-        })
-        Create("UICorner", {Parent = TabActiveLine, CornerRadius = UDim.new(1, 0)})
-
-        local TabIconFrame = Create("Frame", {
-            Parent = TabBtn,
-            BackgroundColor3 = DeltaXLib.Theme.Accent,
-            BackgroundTransparency = 0.85,
-            Position = UDim2.new(0, 8, 0.5, -12),
-            Size = UDim2.new(0, 24, 0, 24)
-        })
-        Create("UICorner", {Parent = TabIconFrame, CornerRadius = UDim.new(0, 7)})
-
-        Create("ImageLabel", {
-            Parent = TabIconFrame,
             BackgroundTransparency = 1,
-            Position = UDim2.new(0.12, 0, 0.12, 0),
-            Size = UDim2.new(0.76, 0, 0.76, 0),
-            Image = IconId or "",
+            Position = UDim2.new(0, 10, 0.5, -10),
+            Size = UDim2.new(0, 20, 0, 20),
+            Image = "",
             ImageColor3 = DeltaXLib.Theme.TextDark,
             ScaleType = Enum.ScaleType.Fit
         })
 
-        local TabLabel = Create("TextLabel", {
+        local TabBtnLabel = Create("TextLabel", {
             Parent = TabBtn,
             BackgroundTransparency = 1,
-            Position = UDim2.new(0, 38, 0, 0),
-            Size = UDim2.new(1, -44, 1, 0),
+            Position = UDim2.new(0, 36, 0, 0),
+            Size = UDim2.new(1, -40, 1, 0),
             Font = Enum.Font.GothamBold,
             Text = Name,
             TextColor3 = DeltaXLib.Theme.TextDark,
@@ -1002,29 +896,76 @@ function DeltaXLib:CreateWindow(Options)
             TextXAlignment = Enum.TextXAlignment.Left
         })
 
-        local TabClickBtn = Create("TextButton", {
+        local TabActiveLine = Create("Frame", {
             Parent = TabBtn,
-            BackgroundTransparency = 1,
-            Size = UDim2.new(1, 0, 1, 0),
-            Text = ""
+            BackgroundColor3 = DeltaXLib.Theme.Accent,
+            Position = UDim2.new(0, 0, 0.5, -10),
+            Size = UDim2.new(0, 3, 0, 20),
+            BackgroundTransparency = 1
         })
+        Create("UICorner", {Parent = TabActiveLine, CornerRadius = UDim.new(1, 0)})
 
         local TabPage = Create("ScrollingFrame", {
             Parent = ContentHolder,
             BackgroundTransparency = 1,
             Size = UDim2.new(1, 0, 1, 0),
             CanvasSize = UDim2.new(0, 0, 0, 0),
-            ScrollBarThickness = 0,
+            ScrollBarThickness = 3,
+            ScrollBarImageColor3 = DeltaXLib.Theme.Accent,
             Visible = false,
             AutomaticCanvasSize = Enum.AutomaticSize.Y,
             Name = Name
         })
 
-        local UIList = Create("UIListLayout", {Parent = TabPage, Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder})
-        TabPage.UIListLayout = UIList
-        Create("UIPadding", {Parent = TabPage, PaddingLeft = UDim.new(0, 4), PaddingTop = UDim.new(0, 6), PaddingRight = UDim.new(0, 4), PaddingBottom = UDim.new(0, 6)})
+        local ScrollBar = Create("Frame", {
+            Parent = TabPage.Parent,
+            BackgroundColor3 = Color3.fromRGB(40, 40, 50),
+            Position = UDim2.new(1, -6, 0, 6),
+            Size = UDim2.new(0, 3, 1, -12),
+            ZIndex = 10,
+            Visible = TabPage.Visible
+        })
+        Create("UICorner", {Parent = ScrollBar, CornerRadius = UDim.new(1, 0)})
+
+        local ScrollThumb = Create("Frame", {
+            Parent = ScrollBar,
+            BackgroundColor3 = DeltaXLib.Theme.Accent,
+            Size = UDim2.new(1, 0, 0, 50),
+            ZIndex = 11
+        })
+        Create("UICorner", {Parent = ScrollThumb, CornerRadius = UDim.new(1, 0)})
 
         local IsScrolling = false
+        ScrollThumb.InputBegan:Connect(function(Input)
+            if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
+                IsScrolling = true
+                DeltaXLib.IsDraggingSlider = true
+                local DragStart = Input.Position.Y
+                local StartCanvas = TabPage.CanvasPosition.Y
+                local MoveCon
+                MoveCon = UserInputService.InputChanged:Connect(function(MoveInput)
+                    if MoveInput.UserInputType == Enum.UserInputType.MouseMovement or MoveInput.UserInputType == Enum.UserInputType.Touch then
+                        local Delta = MoveInput.Position.Y - DragStart
+                        local Ratio = TabPage.AbsoluteCanvasSize.Y / ScrollBar.AbsoluteSize.Y
+                        TabPage.CanvasPosition = Vector2.new(0, StartCanvas + Delta * Ratio)
+                    end
+                end)
+                local EndCon
+                EndCon = UserInputService.InputEnded:Connect(function(EndInput)
+                    if EndInput.UserInputType == Enum.UserInputType.MouseButton1 or EndInput.UserInputType == Enum.UserInputType.Touch then
+                        IsScrolling = false
+                        DeltaXLib.IsDraggingSlider = false
+                        MoveCon:Disconnect()
+                        EndCon:Disconnect()
+                    end
+                end)
+            end
+        end)
+
+        TabPage:GetPropertyChangedSignal("Visible"):Connect(function()
+            ScrollBar.Visible = TabPage.Visible
+        end)
+
         local LastCanvasPos = TabPage.CanvasPosition
         TabPage:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
             IsScrolling = true
@@ -1036,57 +977,55 @@ function DeltaXLib:CreateWindow(Options)
             end)
         end)
 
-        local TabClickStart = nil
-        TabClickBtn.InputBegan:Connect(function(Input)
-            if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-                TabClickStart = tick()
-                ApplyTween(TabBtn, {BackgroundColor3 = Color3.fromRGB(38, 38, 52)}, 0.12)
-            end
-        end)
+        Create("UIListLayout", {Parent = TabPage, Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder, Name = "UIListLayout"})
+        Create("UIPadding", {Parent = TabPage, PaddingLeft = UDim.new(0, 5), PaddingTop = UDim.new(0, 5), PaddingRight = UDim.new(0, 10)})
 
-        TabClickBtn.InputEnded:Connect(function(Input)
+        TabBtn.InputBegan:Connect(function(Input)
             if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-                if TabClickStart and (tick() - TabClickStart) < 0.25 then
-                    if IsPlayerBusy() then return end
-                    if DeltaXLib.IsPromptOpen then return end
-                    for _, v in pairs(ContentHolder:GetChildren()) do if v:IsA("ScrollingFrame") then v.Visible = false end end
-                    for _, child in pairs(TabContainer:GetChildren()) do
-                        if child:IsA("Frame") then
-                            ApplyTween(child, {BackgroundColor3 = DeltaXLib.Theme.Secondary}, 0.2)
-                            local AL = child:FindFirstChild("Frame")
-                            if AL then AL.Visible = false end
-                            for _, d in pairs(child:GetDescendants()) do
-                                if d:IsA("TextLabel") then ApplyTween(d, {TextColor3 = DeltaXLib.Theme.TextDark}, 0.2) end
-                                if d:IsA("ImageLabel") then ApplyTween(d, {ImageColor3 = DeltaXLib.Theme.TextDark}, 0.2) end
-                            end
-                        end
+                if IsPlayerBusy() then return end
+                if DeltaXLib.IsPromptOpen then return end
+                for _, v in pairs(ContentHolder:GetChildren()) do if v:IsA("ScrollingFrame") then v.Visible = false end end
+                for _, v in pairs(TabContainer:GetChildren()) do
+                    if v:IsA("TextButton") then
+                        local lbl = v:FindFirstChildOfClass("TextLabel")
+                        local ico = v:FindFirstChildOfClass("ImageLabel")
+                        local line = v:FindFirstChild("Frame")
+                        if lbl then ApplyTween(lbl, {TextColor3 = DeltaXLib.Theme.TextDark}, 0.2) end
+                        if ico then ApplyTween(ico, {ImageColor3 = DeltaXLib.Theme.TextDark}, 0.2) end
+                        ApplyTween(v, {BackgroundColor3 = DeltaXLib.Theme.Secondary}, 0.2)
+                        if line then ApplyTween(line, {BackgroundTransparency = 1}, 0.2) end
                     end
-                    TabPage.Visible = true
-                    DeltaXLib.CurrentTab = TabPage
-                    ApplyTween(TabBtn, {BackgroundColor3 = Color3.fromRGB(35, 38, 58)}, 0.2)
-                    ApplyTween(TabLabel, {TextColor3 = DeltaXLib.Theme.Accent}, 0.2)
-                    TabActiveLine.Visible = true
-                    Ripple(TabBtn)
                 end
-                TabClickStart = nil
+                TabPage.Visible = true
+                DeltaXLib.CurrentTab = TabPage
+                ApplyTween(TabBtn, {BackgroundColor3 = Color3.fromRGB(38, 38, 52)}, 0.2)
+                ApplyTween(TabBtnLabel, {TextColor3 = DeltaXLib.Theme.Accent}, 0.2)
+                ApplyTween(TabBtnIcon, {ImageColor3 = DeltaXLib.Theme.Accent}, 0.2)
+                ApplyTween(TabActiveLine, {BackgroundTransparency = 0}, 0.2)
+                Ripple(TabBtn)
             end
         end)
 
-        TabClickBtn.MouseLeave:Connect(function()
+        TabBtn.MouseLeave:Connect(function()
             if DeltaXLib.CurrentTab ~= TabPage then
-                ApplyTween(TabBtn, {BackgroundColor3 = DeltaXLib.Theme.Secondary}, 0.18)
+                ApplyTween(TabBtn, {BackgroundColor3 = DeltaXLib.Theme.Secondary}, 0.2)
             end
         end)
 
         if DeltaXLib.CurrentTab == nil then
             DeltaXLib.CurrentTab = TabPage
             TabPage.Visible = true
-            TabLabel.TextColor3 = DeltaXLib.Theme.Accent
-            TabBtn.BackgroundColor3 = Color3.fromRGB(35, 38, 58)
-            TabActiveLine.Visible = true
+            TabBtnLabel.TextColor3 = DeltaXLib.Theme.Accent
+            TabBtnIcon.ImageColor3 = DeltaXLib.Theme.Accent
+            TabBtn.BackgroundColor3 = Color3.fromRGB(38, 38, 52)
+            TabActiveLine.BackgroundTransparency = 0
         end
 
         local CompLib = {}
+
+        function CompLib:SetTabIcon(ImageId)
+            TabBtnIcon.Image = ImageId
+        end
 
         function CompLib:Button(Config)
             local BtnFrame = Create("Frame", {
@@ -1097,35 +1036,33 @@ function DeltaXLib:CreateWindow(Options)
                 ClipsDescendants = true
             })
             Create("UICorner", {Parent = BtnFrame, CornerRadius = UDim.new(0, 14)})
+            Create("UIStroke", {Parent = BtnFrame, Color = DeltaXLib.Theme.Accent, Thickness = 1, Transparency = 0.85})
 
-            if Config.Icon and Config.Icon ~= "" then
-                local IconBG = Create("Frame", {
-                    Parent = BtnFrame,
-                    BackgroundColor3 = DeltaXLib.Theme.Accent,
-                    BackgroundTransparency = 0.82,
-                    Position = UDim2.new(0, 10, 0.5, -16),
-                    Size = UDim2.new(0, 32, 0, 32)
-                })
-                Create("UICorner", {Parent = IconBG, CornerRadius = UDim.new(0, 9)})
-                Create("ImageLabel", {
-                    Parent = IconBG,
-                    BackgroundTransparency = 1,
-                    Position = UDim2.new(0.1, 0, 0.1, 0),
-                    Size = UDim2.new(0.8, 0, 0.8, 0),
-                    Image = Config.Icon,
-                    ImageColor3 = DeltaXLib.Theme.Accent,
-                    ScaleType = Enum.ScaleType.Fit
-                })
-            end
+            local IconHolder = Create("Frame", {
+                Parent = BtnFrame,
+                BackgroundColor3 = DeltaXLib.Theme.Accent,
+                BackgroundTransparency = 0.8,
+                Position = UDim2.new(0, 10, 0.5, -16),
+                Size = UDim2.new(0, 32, 0, 32)
+            })
+            Create("UICorner", {Parent = IconHolder, CornerRadius = UDim.new(0, 10)})
 
-            local TextOffsetX = (Config.Icon and Config.Icon ~= "") and 52 or 14
+            local IconImg = Create("ImageLabel", {
+                Parent = IconHolder,
+                BackgroundTransparency = 1,
+                Position = UDim2.new(0.15, 0, 0.15, 0),
+                Size = UDim2.new(0.7, 0, 0.7, 0),
+                Image = Config.Icon or "rbxassetid://7072706796",
+                ImageColor3 = DeltaXLib.Theme.Accent,
+                ScaleType = Enum.ScaleType.Fit
+            })
 
-            Create("TextLabel", {
+            local TitleLabel = Create("TextLabel", {
                 Name = "TitleLabel",
                 Parent = BtnFrame,
                 BackgroundTransparency = 1,
-                Position = UDim2.new(0, TextOffsetX, 0, 10),
-                Size = UDim2.new(1, -(TextOffsetX + 62), 0, 18),
+                Position = UDim2.new(0, 52, 0, 10),
+                Size = UDim2.new(1, -100, 0, 18),
                 Font = Enum.Font.GothamBold,
                 Text = Config.Title,
                 TextColor3 = DeltaXLib.Theme.White,
@@ -1133,11 +1070,11 @@ function DeltaXLib:CreateWindow(Options)
                 TextXAlignment = Enum.TextXAlignment.Left
             })
 
-            Create("TextLabel", {
+            local DescLabel = Create("TextLabel", {
                 Parent = BtnFrame,
                 BackgroundTransparency = 1,
-                Position = UDim2.new(0, TextOffsetX, 0, 30),
-                Size = UDim2.new(1, -(TextOffsetX + 62), 0, 18),
+                Position = UDim2.new(0, 52, 0, 30),
+                Size = UDim2.new(1, -100, 0, 16),
                 Font = Enum.Font.Gotham,
                 Text = Config.Desc or "点击执行此功能",
                 TextColor3 = DeltaXLib.Theme.TextDark,
@@ -1145,67 +1082,39 @@ function DeltaXLib:CreateWindow(Options)
                 TextXAlignment = Enum.TextXAlignment.Left
             })
 
-            local ExecZone = Create("Frame", {
+            local HitBtn = Create("TextButton", {
                 Parent = BtnFrame,
+                BackgroundTransparency = 1,
+                Position = UDim2.new(1, -70, 0.5, -14),
+                Size = UDim2.new(0, 58, 0, 28),
+                Text = "执行",
+                Font = Enum.Font.GothamBold,
+                TextSize = 12,
+                TextColor3 = DeltaXLib.Theme.White,
                 BackgroundColor3 = DeltaXLib.Theme.Accent,
-                BackgroundTransparency = 0.88,
-                Position = UDim2.new(1, -52, 0.5, -16),
-                Size = UDim2.new(0, 42, 0, 32),
-                ClipsDescendants = true
+                AutoButtonColor = false
             })
-            Create("UICorner", {Parent = ExecZone, CornerRadius = UDim.new(0, 10)})
-            Create("UIStroke", {Parent = ExecZone, Color = DeltaXLib.Theme.Accent, Thickness = 1.2, Transparency = 0.6})
+            Create("UICorner", {Parent = HitBtn, CornerRadius = UDim.new(0, 10)})
 
-            Create("ImageLabel", {
-                Parent = ExecZone,
-                BackgroundTransparency = 1,
-                Position = UDim2.new(0.5, -9, 0.5, -9),
-                Size = UDim2.new(0, 18, 0, 18),
-                Image = "rbxassetid://6034509993",
-                ImageColor3 = DeltaXLib.Theme.Accent,
-                ScaleType = Enum.ScaleType.Fit
-            })
-
-            local RealBtn = Create("TextButton", {
-                Parent = ExecZone,
-                BackgroundTransparency = 1,
-                Size = UDim2.new(1, 0, 1, 0),
-                Text = ""
-            })
-
-            local ExecClickStart = nil
-            RealBtn.InputBegan:Connect(function(Input)
+            HitBtn.InputBegan:Connect(function(Input)
                 if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-                    ExecClickStart = tick()
-                    ApplyTween(ExecZone, {BackgroundTransparency = 0.7}, 0.1)
+                    if DeltaXLib.IsDraggingSlider or DeltaXLib.IsDraggingUI or IsPlayerBusy() then return end
+                    if DeltaXLib.IsPromptOpen then return end
+                    Ripple(HitBtn)
+                    ApplyTween(HitBtn, {BackgroundColor3 = Color3.fromRGB(0, 120, 220)}, 0.1)
+                    task.delay(0.2, function() ApplyTween(HitBtn, {BackgroundColor3 = DeltaXLib.Theme.Accent}, 0.2) end)
+                    if Config.Callback then Config.Callback() end
                 end
             end)
 
-            RealBtn.InputEnded:Connect(function(Input)
-                if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-                    if ExecClickStart and (tick() - ExecClickStart) < 0.25 then
-                        if DeltaXLib.IsDraggingSlider or DeltaXLib.IsDraggingUI or IsPlayerBusy() then
-                            ApplyTween(ExecZone, {BackgroundTransparency = 0.88}, 0.18)
-                            return
-                        end
-                        if DeltaXLib.IsPromptOpen then return end
-                        Ripple(ExecZone)
-                        ApplyTween(ExecZone, {BackgroundTransparency = 0.6}, 0.12)
-                        task.wait(0.12)
-                        ApplyTween(ExecZone, {BackgroundTransparency = 0.88}, 0.2)
-                        if Config.Callback then Config.Callback() end
-                    end
-                    ExecClickStart = nil
-                    ApplyTween(ExecZone, {BackgroundTransparency = 0.88}, 0.18)
-                end
+            HitBtn.MouseEnter:Connect(function()
+                ApplyTween(HitBtn, {BackgroundColor3 = Color3.fromRGB(30, 170, 255)}, 0.15)
+            end)
+            HitBtn.MouseLeave:Connect(function()
+                ApplyTween(HitBtn, {BackgroundColor3 = DeltaXLib.Theme.Accent}, 0.15)
             end)
 
-            RealBtn.MouseLeave:Connect(function()
-                ApplyTween(ExecZone, {BackgroundTransparency = 0.88}, 0.18)
-            end)
-
-            local BtnMethods = {Instance = BtnFrame}
-            return BtnMethods
+            return BtnFrame
         end
 
         function CompLib:Toggle(Config)
@@ -1213,39 +1122,36 @@ function DeltaXLib:CreateWindow(Options)
             local TglFrame = Create("Frame", {
                 Parent = Config.Parent or TabPage,
                 BackgroundColor3 = DeltaXLib.Theme.Secondary,
-                Size = UDim2.new(1, 0, 0, 52),
+                Size = UDim2.new(1, 0, 0, 54),
                 ClipsDescendants = true
             })
             Create("UICorner", {Parent = TglFrame, CornerRadius = UDim.new(0, 14)})
 
-            if Config.Icon and Config.Icon ~= "" then
-                local IconBG = Create("Frame", {
-                    Parent = TglFrame,
-                    BackgroundColor3 = DeltaXLib.Theme.Accent,
-                    BackgroundTransparency = 0.82,
-                    Position = UDim2.new(0, 10, 0.5, -16),
-                    Size = UDim2.new(0, 32, 0, 32)
-                })
-                Create("UICorner", {Parent = IconBG, CornerRadius = UDim.new(0, 9)})
-                Create("ImageLabel", {
-                    Parent = IconBG,
-                    BackgroundTransparency = 1,
-                    Position = UDim2.new(0.1, 0, 0.1, 0),
-                    Size = UDim2.new(0.8, 0, 0.8, 0),
-                    Image = Config.Icon,
-                    ImageColor3 = DeltaXLib.Theme.Accent,
-                    ScaleType = Enum.ScaleType.Fit
-                })
-            end
+            local IconHolder = Create("Frame", {
+                Parent = TglFrame,
+                BackgroundColor3 = State and DeltaXLib.Theme.Accent or Color3.fromRGB(55, 55, 65),
+                BackgroundTransparency = 0.75,
+                Position = UDim2.new(0, 10, 0.5, -16),
+                Size = UDim2.new(0, 32, 0, 32)
+            })
+            Create("UICorner", {Parent = IconHolder, CornerRadius = UDim.new(0, 10)})
 
-            local TextOffsetX = (Config.Icon and Config.Icon ~= "") and 52 or 14
+            local IconImg = Create("ImageLabel", {
+                Parent = IconHolder,
+                BackgroundTransparency = 1,
+                Position = UDim2.new(0.15, 0, 0.15, 0),
+                Size = UDim2.new(0.7, 0, 0.7, 0),
+                Image = Config.Icon or "rbxassetid://7072718350",
+                ImageColor3 = State and DeltaXLib.Theme.Accent or Color3.fromRGB(130, 130, 145),
+                ScaleType = Enum.ScaleType.Fit
+            })
 
-            Create("TextLabel", {
+            local TitleLabel = Create("TextLabel", {
                 Name = "TitleLabel",
                 Parent = TglFrame,
                 BackgroundTransparency = 1,
-                Position = UDim2.new(0, TextOffsetX, 0, 10),
-                Size = UDim2.new(1, -(TextOffsetX + 82), 0, 18),
+                Position = UDim2.new(0, 52, 0, 9),
+                Size = UDim2.new(1, -115, 0, 18),
                 Font = Enum.Font.GothamBold,
                 Text = Config.Title,
                 TextColor3 = DeltaXLib.Theme.White,
@@ -1253,70 +1159,56 @@ function DeltaXLib:CreateWindow(Options)
                 TextXAlignment = Enum.TextXAlignment.Left
             })
 
-            Create("TextLabel", {
+            local DescLabel = Create("TextLabel", {
                 Parent = TglFrame,
                 BackgroundTransparency = 1,
-                Position = UDim2.new(0, TextOffsetX, 0, 30),
-                Size = UDim2.new(1, -(TextOffsetX + 82), 0, 16),
+                Position = UDim2.new(0, 52, 0, 29),
+                Size = UDim2.new(1, -115, 0, 16),
                 Font = Enum.Font.Gotham,
-                Text = Config.Desc or "点击切换此功能开关",
+                Text = Config.Desc or "点击开启或关闭此功能",
                 TextColor3 = DeltaXLib.Theme.TextDark,
                 TextSize = 11,
                 TextXAlignment = Enum.TextXAlignment.Left
             })
 
-            local SwitchTrack = Create("Frame", {
+            local SwitchBG = Create("Frame", {
                 Parent = TglFrame,
-                BackgroundColor3 = State and DeltaXLib.Theme.Accent or Color3.fromRGB(48, 48, 62),
-                Position = UDim2.new(1, -62, 0.5, -14),
-                Size = UDim2.new(0, 52, 0, 28)
+                BackgroundColor3 = State and DeltaXLib.Theme.Accent or Color3.fromRGB(50, 50, 62),
+                Position = UDim2.new(1, -62, 0.5, -13),
+                Size = UDim2.new(0, 50, 0, 26)
             })
-            Create("UICorner", {Parent = SwitchTrack, CornerRadius = UDim.new(1, 0)})
+            Create("UICorner", {Parent = SwitchBG, CornerRadius = UDim.new(1, 0)})
 
-            local SwitchKnob = Create("Frame", {
-                Parent = SwitchTrack,
+            local Dot = Create("Frame", {
+                Parent = SwitchBG,
                 BackgroundColor3 = DeltaXLib.Theme.White,
-                Position = State and UDim2.new(1, -26, 0.5, -10) or UDim2.new(0, 3, 0.5, -10),
-                Size = UDim2.new(0, 22, 0, 22)
+                Position = State and UDim2.new(1, -24, 0.5, -10) or UDim2.new(0, 3, 0.5, -10),
+                Size = UDim2.new(0, 20, 0, 20)
             })
-            Create("UICorner", {Parent = SwitchKnob, CornerRadius = UDim.new(1, 0)})
+            Create("UICorner", {Parent = Dot, CornerRadius = UDim.new(1, 0)})
 
-            local ToggleClickStart = nil
             local ClickBtn = Create("TextButton", {
-                Parent = SwitchTrack,
+                Parent = TglFrame,
                 BackgroundTransparency = 1,
-                Size = UDim2.new(1, 0, 1, 0),
+                Position = UDim2.new(1, -68, 0.5, -16),
+                Size = UDim2.new(0, 56, 0, 32),
                 Text = ""
             })
 
             ClickBtn.InputBegan:Connect(function(Input)
                 if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-                    ToggleClickStart = tick()
+                    if DeltaXLib.IsDraggingSlider or DeltaXLib.IsDraggingUI or IsPlayerBusy() then return end
+                    if DeltaXLib.IsPromptOpen then return end
+                    State = not State
+                    ApplyTween(SwitchBG, {BackgroundColor3 = State and DeltaXLib.Theme.Accent or Color3.fromRGB(50, 50, 62)}, 0.25)
+                    ApplyTween(Dot, {Position = State and UDim2.new(1, -24, 0.5, -10) or UDim2.new(0, 3, 0.5, -10)}, 0.25)
+                    ApplyTween(IconHolder, {BackgroundColor3 = State and DeltaXLib.Theme.Accent or Color3.fromRGB(55, 55, 65)}, 0.25)
+                    ApplyTween(IconImg, {ImageColor3 = State and DeltaXLib.Theme.Accent or Color3.fromRGB(130, 130, 145)}, 0.25)
+                    if Config.Callback then Config.Callback(State) end
                 end
             end)
 
-            ClickBtn.InputEnded:Connect(function(Input)
-                if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-                    if ToggleClickStart and (tick() - ToggleClickStart) < 0.25 then
-                        if DeltaXLib.IsDraggingSlider or DeltaXLib.IsDraggingUI or IsPlayerBusy() then return end
-                        if DeltaXLib.IsPromptOpen then return end
-                        State = not State
-                        ApplyTween(SwitchTrack, {BackgroundColor3 = State and DeltaXLib.Theme.Accent or Color3.fromRGB(48, 48, 62)}, 0.25)
-                        ApplyTween(SwitchKnob, {Position = State and UDim2.new(1, -26, 0.5, -10) or UDim2.new(0, 3, 0.5, -10)}, 0.25)
-                        if Config.Callback then Config.Callback(State) end
-                    end
-                    ToggleClickStart = nil
-                end
-            end)
-
-            local TglMethods = {Instance = TglFrame}
-            function TglMethods:Set(Val)
-                State = Val
-                ApplyTween(SwitchTrack, {BackgroundColor3 = State and DeltaXLib.Theme.Accent or Color3.fromRGB(48, 48, 62)}, 0.25)
-                ApplyTween(SwitchKnob, {Position = State and UDim2.new(1, -26, 0.5, -10) or UDim2.new(0, 3, 0.5, -10)}, 0.25)
-            end
-            function TglMethods:Get() return State end
-            return TglMethods
+            return TglFrame
         end
 
         function CompLib:Slider(Config)
@@ -1329,39 +1221,36 @@ function DeltaXLib:CreateWindow(Options)
             local SliderFrame = Create("Frame", {
                 Parent = Config.Parent or TabPage,
                 BackgroundColor3 = DeltaXLib.Theme.Secondary,
-                Size = UDim2.new(1, 0, 0, 66),
-                Name = Config.Title .. "_Slider"
+                Size = UDim2.new(1, 0, 0, 68),
+                ClipsDescendants = true
             })
             Create("UICorner", {Parent = SliderFrame, CornerRadius = UDim.new(0, 14)})
 
-            if Config.Icon and Config.Icon ~= "" then
-                local IconBG = Create("Frame", {
-                    Parent = SliderFrame,
-                    BackgroundColor3 = DeltaXLib.Theme.Accent,
-                    BackgroundTransparency = 0.82,
-                    Position = UDim2.new(0, 10, 0, 10),
-                    Size = UDim2.new(0, 24, 0, 24)
-                })
-                Create("UICorner", {Parent = IconBG, CornerRadius = UDim.new(0, 7)})
-                Create("ImageLabel", {
-                    Parent = IconBG,
-                    BackgroundTransparency = 1,
-                    Position = UDim2.new(0.1, 0, 0.1, 0),
-                    Size = UDim2.new(0.8, 0, 0.8, 0),
-                    Image = Config.Icon,
-                    ImageColor3 = DeltaXLib.Theme.Accent,
-                    ScaleType = Enum.ScaleType.Fit
-                })
-            end
+            local IconHolder = Create("Frame", {
+                Parent = SliderFrame,
+                BackgroundColor3 = DeltaXLib.Theme.Accent,
+                BackgroundTransparency = 0.8,
+                Position = UDim2.new(0, 10, 0, 10),
+                Size = UDim2.new(0, 32, 0, 32)
+            })
+            Create("UICorner", {Parent = IconHolder, CornerRadius = UDim.new(0, 10)})
 
-            local TextOffset = (Config.Icon and Config.Icon ~= "") and 44 or 14
+            Create("ImageLabel", {
+                Parent = IconHolder,
+                BackgroundTransparency = 1,
+                Position = UDim2.new(0.15, 0, 0.15, 0),
+                Size = UDim2.new(0.7, 0, 0.7, 0),
+                Image = Config.Icon or "rbxassetid://7072719765",
+                ImageColor3 = DeltaXLib.Theme.Accent,
+                ScaleType = Enum.ScaleType.Fit
+            })
 
-            Create("TextLabel", {
+            local TitleLabel = Create("TextLabel", {
                 Name = "TitleLabel",
                 Parent = SliderFrame,
                 BackgroundTransparency = 1,
-                Position = UDim2.new(0, TextOffset, 0, 10),
-                Size = UDim2.new(1, -(TextOffset + 70), 0, 16),
+                Position = UDim2.new(0, 52, 0, 10),
+                Size = UDim2.new(1, -120, 0, 18),
                 Font = Enum.Font.GothamBold,
                 Text = Config.Title,
                 TextColor3 = DeltaXLib.Theme.White,
@@ -1369,11 +1258,11 @@ function DeltaXLib:CreateWindow(Options)
                 TextXAlignment = Enum.TextXAlignment.Left
             })
 
-            Create("TextLabel", {
+            local DescLabel = Create("TextLabel", {
                 Parent = SliderFrame,
                 BackgroundTransparency = 1,
-                Position = UDim2.new(0, TextOffset, 0, 27),
-                Size = UDim2.new(1, -(TextOffset + 70), 0, 14),
+                Position = UDim2.new(0, 52, 0, 29),
+                Size = UDim2.new(1, -120, 0, 14),
                 Font = Enum.Font.Gotham,
                 Text = Config.Desc or "拖动滑块调整数值",
                 TextColor3 = DeltaXLib.Theme.TextDark,
@@ -1384,9 +1273,9 @@ function DeltaXLib:CreateWindow(Options)
             local ValueBadge = Create("Frame", {
                 Parent = SliderFrame,
                 BackgroundColor3 = DeltaXLib.Theme.Accent,
-                BackgroundTransparency = 0.82,
-                Position = UDim2.new(1, -60, 0, 8),
-                Size = UDim2.new(0, 50, 0, 26)
+                BackgroundTransparency = 0.75,
+                Position = UDim2.new(1, -58, 0, 10),
+                Size = UDim2.new(0, 46, 0, 22)
             })
             Create("UICorner", {Parent = ValueBadge, CornerRadius = UDim.new(0, 8)})
 
@@ -1403,29 +1292,29 @@ function DeltaXLib:CreateWindow(Options)
 
             local BarBG = Create("Frame", {
                 Parent = SliderFrame,
-                BackgroundColor3 = Color3.fromRGB(42, 42, 56),
-                Position = UDim2.new(0, 14, 0, 48),
-                Size = UDim2.new(1, -28, 0, 10)
+                BackgroundColor3 = Color3.fromRGB(42, 42, 55),
+                Position = UDim2.new(0, 12, 0, 50),
+                Size = UDim2.new(1, -24, 0, 9)
             })
             Create("UICorner", {Parent = BarBG, CornerRadius = UDim.new(1, 0)})
 
             local BarFill = Create("Frame", {
                 Parent = BarBG,
                 BackgroundColor3 = DeltaXLib.Theme.Accent,
-                Size = UDim2.new((Value - Min) / (Max - Min), 0, 1, 0)
+                Size = UDim2.new((Value - Min)/(Max - Min), 0, 1, 0)
             })
             Create("UICorner", {Parent = BarFill, CornerRadius = UDim.new(1, 0)})
 
-            local Knob = Create("Frame", {
+            local ThumbDot = Create("Frame", {
                 Parent = BarBG,
                 BackgroundColor3 = DeltaXLib.Theme.White,
                 AnchorPoint = Vector2.new(0.5, 0.5),
-                Position = UDim2.new((Value - Min) / (Max - Min), 0, 0.5, 0),
-                Size = UDim2.new(0, 18, 0, 18),
+                Position = UDim2.new((Value - Min)/(Max - Min), 0, 0.5, 0),
+                Size = UDim2.new(0, 14, 0, 14),
                 ZIndex = 5
             })
-            Create("UICorner", {Parent = Knob, CornerRadius = UDim.new(1, 0)})
-            Create("UIStroke", {Parent = Knob, Color = DeltaXLib.Theme.Accent, Thickness = 2.5})
+            Create("UICorner", {Parent = ThumbDot, CornerRadius = UDim.new(1, 0)})
+            Create("UIStroke", {Parent = ThumbDot, Color = DeltaXLib.Theme.Accent, Thickness = 2, Transparency = 0})
 
             local function UpdateSlider(Input)
                 if DeltaXLib.IsPromptOpen then return end
@@ -1433,13 +1322,13 @@ function DeltaXLib:CreateWindow(Options)
                 Value = math.floor(Min + (Max - Min) * Pos)
                 ValueLabel.Text = tostring(Value)
                 ApplyTween(BarFill, {Size = UDim2.new(Pos, 0, 1, 0)}, 0.08)
-                ApplyTween(Knob, {Position = UDim2.new(Pos, 0, 0.5, 0)}, 0.08)
+                ApplyTween(ThumbDot, {Position = UDim2.new(Pos, 0, 0.5, 0)}, 0.08)
                 if Config.Callback then Config.Callback(Value) end
             end
 
             BarBG.InputBegan:Connect(function(Input)
-                if (Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch) and not DeltaXLib.IsDraggingSlider and not DeltaXLib.IsPromptOpen then
-                    if DeltaXLib.IsDraggingUI or IsPlayerBusy() then return end
+                if (Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch) and not DeltaXLib.IsPromptOpen then
+                    if DeltaXLib.IsDraggingUI then return end
                     IsThisDragging = true
                     DeltaXLib.IsDraggingSlider = true
                     UpdateSlider(Input)
@@ -1454,75 +1343,43 @@ function DeltaXLib:CreateWindow(Options)
 
             UserInputService.InputEnded:Connect(function(Input)
                 if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-                    if IsThisDragging then
-                        IsThisDragging = false
-                        DeltaXLib.IsDraggingSlider = false
-                    end
+                    IsThisDragging = false
+                    DeltaXLib.IsDraggingSlider = false
                 end
             end)
 
-            local SliderMethods = {Instance = SliderFrame}
-            function SliderMethods:Set(Val)
-                Value = math.clamp(Val, Min, Max)
-                local Pos = (Value - Min) / (Max - Min)
-                ValueLabel.Text = tostring(Value)
-                ApplyTween(BarFill, {Size = UDim2.new(Pos, 0, 1, 0)}, 0.2)
-                ApplyTween(Knob, {Position = UDim2.new(Pos, 0, 0.5, 0)}, 0.2)
-            end
-            function SliderMethods:Get() return Value end
-            return SliderMethods
+            return SliderFrame
         end
 
         function CompLib:Section(Config)
             local Expanded = Config.Default or false
             local SectionFrame = Create("Frame", {
                 Parent = Config.Parent or TabPage,
-                BackgroundColor3 = Color3.fromRGB(22, 22, 30),
+                BackgroundColor3 = Color3.fromRGB(22, 22, 28),
                 Size = UDim2.new(1, 0, 0, 44),
                 ClipsDescendants = true,
-                Name = Config.Title .. "_Section"
+                Name = (Config.Title or "Section") .. "_Section"
             })
             Create("UICorner", {Parent = SectionFrame, CornerRadius = UDim.new(0, 14)})
-            Create("UIStroke", {Parent = SectionFrame, Color = DeltaXLib.Theme.Accent, Thickness = 1.2, Transparency = 0.75})
+            Create("UIStroke", {Parent = SectionFrame, Color = DeltaXLib.Theme.Accent, Thickness = 1, Transparency = 0.75})
 
-            local Header = Create("Frame", {
+            local Header = Create("TextButton", {
                 Parent = SectionFrame,
                 BackgroundTransparency = 1,
-                Size = UDim2.new(1, 0, 0, 44)
+                Size = UDim2.new(1, 0, 0, 44),
+                Text = ""
             })
 
-            if Config.Icon and Config.Icon ~= "" then
-                local SIconBG = Create("Frame", {
-                    Parent = Header,
-                    BackgroundColor3 = DeltaXLib.Theme.Accent,
-                    BackgroundTransparency = 0.82,
-                    Position = UDim2.new(0, 10, 0.5, -12),
-                    Size = UDim2.new(0, 24, 0, 24)
-                })
-                Create("UICorner", {Parent = SIconBG, CornerRadius = UDim.new(0, 7)})
-                Create("ImageLabel", {
-                    Parent = SIconBG,
-                    BackgroundTransparency = 1,
-                    Position = UDim2.new(0.1, 0, 0.1, 0),
-                    Size = UDim2.new(0.8, 0, 0.8, 0),
-                    Image = Config.Icon,
-                    ImageColor3 = DeltaXLib.Theme.Accent,
-                    ScaleType = Enum.ScaleType.Fit
-                })
-            end
-
-            local STextOffset = (Config.Icon and Config.Icon ~= "") and 44 or 14
-
-            Create("TextLabel", {
+            local TitleLabel = Create("TextLabel", {
                 Name = "TitleLabel",
                 Parent = Header,
                 BackgroundTransparency = 1,
-                Position = UDim2.new(0, STextOffset, 0, 0),
-                Size = UDim2.new(1, -(STextOffset + 46), 1, 0),
+                Position = UDim2.new(0, 16, 0, 0),
+                Size = UDim2.new(1, -52, 1, 0),
                 Font = Enum.Font.GothamBold,
                 Text = Config.Title,
                 TextColor3 = DeltaXLib.Theme.Accent,
-                TextSize = 13,
+                TextSize = 14,
                 TextXAlignment = Enum.TextXAlignment.Left
             })
 
@@ -1537,17 +1394,10 @@ function DeltaXLib:CreateWindow(Options)
                 ScaleType = Enum.ScaleType.Fit
             })
 
-            local HeaderClickBtn = Create("TextButton", {
-                Parent = Header,
-                BackgroundTransparency = 1,
-                Size = UDim2.new(1, 0, 1, 0),
-                Text = ""
-            })
-
             local Container = Create("Frame", {
                 Parent = SectionFrame,
                 BackgroundTransparency = 1,
-                Position = UDim2.new(0, 6, 0, 44),
+                Position = UDim2.new(0, 6, 0, 40),
                 Size = UDim2.new(1, -12, 0, 0),
                 Name = "Container"
             })
@@ -1556,35 +1406,32 @@ function DeltaXLib:CreateWindow(Options)
                 Padding = UDim.new(0, 6),
                 SortOrder = Enum.SortOrder.LayoutOrder
             })
-            Create("UIPadding", {Parent = Container, PaddingBottom = UDim.new(0, 6)})
-
             Layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
                 if Expanded then
-                    ApplyTween(SectionFrame, {Size = UDim2.new(1, 0, 0, Layout.AbsoluteContentSize.Y + 58)}, 0.25)
+                    ApplyTween(SectionFrame, {Size = UDim2.new(1, 0, 0, Layout.AbsoluteContentSize.Y + 52)}, 0.2)
                 end
             end)
 
-            local SecClickStart = nil
-            HeaderClickBtn.InputBegan:Connect(function(Input)
+            local function ToggleSection()
+                if IsPlayerBusy() then return end
+                if DeltaXLib.IsPromptOpen then return end
+                Expanded = not Expanded
+                local TargetHeight = Expanded and (Layout.AbsoluteContentSize.Y + 58) or 44
+                ApplyTween(SectionFrame, {Size = UDim2.new(1, 0, 0, TargetHeight)}, 0.38)
+                ApplyTween(Arrow, {Rotation = Expanded and 180 or 0}, 0.38)
+                task.wait(0.4)
+                TabPage.CanvasSize = UDim2.new(0, 0, 0, TabPage.UIListLayout.AbsoluteContentSize.Y + 20)
+            end
+
+            Header.InputBegan:Connect(function(Input)
                 if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-                    SecClickStart = tick()
+                    if DeltaXLib.IsDraggingSlider or DeltaXLib.IsDraggingUI or IsPlayerBusy() then return end
+                    ToggleSection()
                 end
             end)
 
-            HeaderClickBtn.InputEnded:Connect(function(Input)
-                if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-                    if SecClickStart and (tick() - SecClickStart) < 0.25 then
-                        if DeltaXLib.IsDraggingSlider or DeltaXLib.IsDraggingUI or IsPlayerBusy() then return end
-                        if DeltaXLib.IsPromptOpen then return end
-                        Expanded = not Expanded
-                        local TargetH = Expanded and (Layout.AbsoluteContentSize.Y + 58) or 44
-                        ApplyTween(SectionFrame, {Size = UDim2.new(1, 0, 0, TargetH)}, 0.35, Enum.EasingStyle.Quart)
-                        ApplyTween(Arrow, {Rotation = Expanded and 180 or 0}, 0.35)
-                        task.wait(0.38)
-                        TabPage.CanvasSize = UDim2.new(0, 0, 0, TabPage.UIListLayout.AbsoluteContentSize.Y + 20)
-                    end
-                    SecClickStart = nil
-                end
+            Header.MouseLeave:Connect(function()
+                ApplyTween(SectionFrame, {BackgroundColor3 = Color3.fromRGB(22, 22, 28)}, 0.2)
             end)
 
             local SectionItems = {}
@@ -1598,7 +1445,6 @@ function DeltaXLib:CreateWindow(Options)
             function SectionItems:Dropdown(Conf) return AddToSection("Dropdown", Conf) end
             function SectionItems:Info(Conf) return AddToSection("Info", Conf) end
             function SectionItems:Label(Conf) return AddToSection("Label", Conf) end
-            function SectionItems:Input(Conf) return AddToSection("Input", Conf) end
             return SectionItems
         end
 
@@ -1607,38 +1453,34 @@ function DeltaXLib:CreateWindow(Options)
                 Parent = Config.Parent or TabPage,
                 BackgroundColor3 = DeltaXLib.Theme.Secondary,
                 Size = UDim2.new(1, 0, 0, 72),
-                Name = Config.Title .. "_Input"
+                ClipsDescendants = true
             })
             Create("UICorner", {Parent = InputFrame, CornerRadius = UDim.new(0, 14)})
 
-            if Config.Icon and Config.Icon ~= "" then
-                local IIconBG = Create("Frame", {
-                    Parent = InputFrame,
-                    BackgroundColor3 = DeltaXLib.Theme.Accent,
-                    BackgroundTransparency = 0.82,
-                    Position = UDim2.new(0, 10, 0, 12),
-                    Size = UDim2.new(0, 24, 0, 24)
-                })
-                Create("UICorner", {Parent = IIconBG, CornerRadius = UDim.new(0, 7)})
-                Create("ImageLabel", {
-                    Parent = IIconBG,
-                    BackgroundTransparency = 1,
-                    Position = UDim2.new(0.1, 0, 0.1, 0),
-                    Size = UDim2.new(0.8, 0, 0.8, 0),
-                    Image = Config.Icon,
-                    ImageColor3 = DeltaXLib.Theme.Accent,
-                    ScaleType = Enum.ScaleType.Fit
-                })
-            end
+            local IconHolder = Create("Frame", {
+                Parent = InputFrame,
+                BackgroundColor3 = DeltaXLib.Theme.Accent,
+                BackgroundTransparency = 0.8,
+                Position = UDim2.new(0, 10, 0, 10),
+                Size = UDim2.new(0, 32, 0, 32)
+            })
+            Create("UICorner", {Parent = IconHolder, CornerRadius = UDim.new(0, 10)})
+            Create("ImageLabel", {
+                Parent = IconHolder,
+                BackgroundTransparency = 1,
+                Position = UDim2.new(0.15, 0, 0.15, 0),
+                Size = UDim2.new(0.7, 0, 0.7, 0),
+                Image = Config.Icon or "rbxassetid://7072706796",
+                ImageColor3 = DeltaXLib.Theme.Accent,
+                ScaleType = Enum.ScaleType.Fit
+            })
 
-            local ITextOffset = (Config.Icon and Config.Icon ~= "") and 44 or 14
-
-            Create("TextLabel", {
+            local TitleLabel = Create("TextLabel", {
                 Name = "TitleLabel",
                 Parent = InputFrame,
                 BackgroundTransparency = 1,
-                Position = UDim2.new(0, ITextOffset, 0, 10),
-                Size = UDim2.new(1, -(ITextOffset + 18), 0, 16),
+                Position = UDim2.new(0, 52, 0, 10),
+                Size = UDim2.new(1, -62, 0, 16),
                 Font = Enum.Font.GothamBold,
                 Text = Config.Title,
                 TextColor3 = DeltaXLib.Theme.White,
@@ -1646,13 +1488,13 @@ function DeltaXLib:CreateWindow(Options)
                 TextXAlignment = Enum.TextXAlignment.Left
             })
 
-            Create("TextLabel", {
+            local DescLabel = Create("TextLabel", {
                 Parent = InputFrame,
                 BackgroundTransparency = 1,
-                Position = UDim2.new(0, ITextOffset, 0, 27),
-                Size = UDim2.new(1, -(ITextOffset + 18), 0, 14),
+                Position = UDim2.new(0, 52, 0, 27),
+                Size = UDim2.new(1, -62, 0, 13),
                 Font = Enum.Font.Gotham,
-                Text = Config.Desc or "点击输入框以输入内容",
+                Text = Config.Desc or "在下方输入框填写内容后生效",
                 TextColor3 = DeltaXLib.Theme.TextDark,
                 TextSize = 10,
                 TextXAlignment = Enum.TextXAlignment.Left
@@ -1660,12 +1502,11 @@ function DeltaXLib:CreateWindow(Options)
 
             local BoxBG = Create("Frame", {
                 Parent = InputFrame,
-                BackgroundColor3 = Color3.fromRGB(38, 38, 52),
-                Position = UDim2.new(0, 12, 0, 44),
-                Size = UDim2.new(1, -24, 0, 22)
+                BackgroundColor3 = Color3.fromRGB(42, 42, 55),
+                Position = UDim2.new(0, 10, 0, 44),
+                Size = UDim2.new(1, -20, 0, 22)
             })
             Create("UICorner", {Parent = BoxBG, CornerRadius = UDim.new(0, 8)})
-            local BoxStroke = Create("UIStroke", {Parent = BoxBG, Color = DeltaXLib.Theme.Accent, Thickness = 1, Transparency = 0.8})
 
             local Box = Create("TextBox", {
                 Parent = BoxBG,
@@ -1686,19 +1527,16 @@ function DeltaXLib:CreateWindow(Options)
                     Box:ReleaseFocus()
                     return
                 end
-                ApplyTween(BoxStroke, {Transparency = 0.4}, 0.2)
+                ApplyTween(BoxBG, {BackgroundColor3 = Color3.fromRGB(52, 52, 68)}, 0.2)
             end)
 
             Box.FocusLost:Connect(function()
-                ApplyTween(BoxStroke, {Transparency = 0.8}, 0.2)
                 if DeltaXLib.IsPromptOpen then return end
+                ApplyTween(BoxBG, {BackgroundColor3 = Color3.fromRGB(42, 42, 55)}, 0.2)
                 if Config.Callback then Config.Callback(Box.Text) end
             end)
 
-            local InputMethods = {Instance = InputFrame}
-            function InputMethods:Get() return Box.Text end
-            function InputMethods:Set(Val) Box.Text = tostring(Val) end
-            return InputMethods
+            return InputFrame
         end
 
         function CompLib:Dropdown(Config)
@@ -1706,53 +1544,57 @@ function DeltaXLib:CreateWindow(Options)
             local Expanded = false
             local DropFrame = Create("Frame", {
                 Parent = Config.Parent or TabPage,
-                Size = UDim2.new(1, 0, 0, 52),
+                Size = UDim2.new(1, 0, 0, 56),
                 ClipsDescendants = true,
                 BackgroundColor3 = DeltaXLib.Theme.Secondary,
                 Name = Config.Title .. "_Drop"
             })
             Create("UICorner", {Parent = DropFrame, CornerRadius = UDim.new(0, 14)})
 
-            if Config.Icon and Config.Icon ~= "" then
-                local DIconBG = Create("Frame", {
-                    Parent = DropFrame,
-                    BackgroundColor3 = DeltaXLib.Theme.Accent,
-                    BackgroundTransparency = 0.82,
-                    Position = UDim2.new(0, 10, 0, 10),
-                    Size = UDim2.new(0, 32, 0, 32)
-                })
-                Create("UICorner", {Parent = DIconBG, CornerRadius = UDim.new(0, 9)})
-                Create("ImageLabel", {
-                    Parent = DIconBG,
-                    BackgroundTransparency = 1,
-                    Position = UDim2.new(0.1, 0, 0.1, 0),
-                    Size = UDim2.new(0.8, 0, 0.8, 0),
-                    Image = Config.Icon,
-                    ImageColor3 = DeltaXLib.Theme.Accent,
-                    ScaleType = Enum.ScaleType.Fit
-                })
-            end
+            local IconHolder = Create("Frame", {
+                Parent = DropFrame,
+                BackgroundColor3 = DeltaXLib.Theme.Accent,
+                BackgroundTransparency = 0.8,
+                Position = UDim2.new(0, 10, 0.5, -16),
+                Size = UDim2.new(0, 32, 0, 32)
+            })
+            Create("UICorner", {Parent = IconHolder, CornerRadius = UDim.new(0, 10)})
+            Create("ImageLabel", {
+                Parent = IconHolder,
+                BackgroundTransparency = 1,
+                Position = UDim2.new(0.15, 0, 0.15, 0),
+                Size = UDim2.new(0.7, 0, 0.7, 0),
+                Image = Config.Icon or "rbxassetid://6034825932",
+                ImageColor3 = DeltaXLib.Theme.Accent,
+                ScaleType = Enum.ScaleType.Fit
+            })
 
-            local DTextOffset = (Config.Icon and Config.Icon ~= "") and 52 or 14
+            local TopBtn = Create("TextButton", {
+                Parent = DropFrame,
+                BackgroundTransparency = 1,
+                Size = UDim2.new(1, -40, 1, 0),
+                Position = UDim2.new(0, 0, 0, 0),
+                Text = ""
+            })
 
             local TitleLabel = Create("TextLabel", {
                 Name = "TitleLabel",
-                Parent = DropFrame,
+                Parent = TopBtn,
                 BackgroundTransparency = 1,
-                Position = UDim2.new(0, DTextOffset, 0, 8),
-                Size = UDim2.new(1, -(DTextOffset + 50), 0, 18),
+                Position = UDim2.new(0, 52, 0, 8),
+                Size = UDim2.new(1, -30, 0, 17),
                 Font = Enum.Font.GothamBold,
-                Text = Config.Title .. " : " .. (Config.AllowNone and "未选择" or "请选择"),
+                Text = Config.Title,
                 TextColor3 = DeltaXLib.Theme.White,
                 TextSize = 13,
                 TextXAlignment = Enum.TextXAlignment.Left
             })
 
-            Create("TextLabel", {
-                Parent = DropFrame,
+            local DescLabel = Create("TextLabel", {
+                Parent = TopBtn,
                 BackgroundTransparency = 1,
-                Position = UDim2.new(0, DTextOffset, 0, 28),
-                Size = UDim2.new(1, -(DTextOffset + 50), 0, 16),
+                Position = UDim2.new(0, 52, 0, 27),
+                Size = UDim2.new(1, -30, 0, 14),
                 Font = Enum.Font.Gotham,
                 Text = Config.Desc or "点击展开选项列表",
                 TextColor3 = DeltaXLib.Theme.TextDark,
@@ -1763,7 +1605,7 @@ function DeltaXLib:CreateWindow(Options)
             local DropArrow = Create("ImageLabel", {
                 Parent = DropFrame,
                 BackgroundTransparency = 1,
-                Position = UDim2.new(1, -36, 0, 16),
+                Position = UDim2.new(1, -32, 0.5, -10),
                 Size = UDim2.new(0, 20, 0, 20),
                 Image = "rbxassetid://6034829095",
                 ImageColor3 = DeltaXLib.Theme.Accent,
@@ -1771,101 +1613,66 @@ function DeltaXLib:CreateWindow(Options)
                 ScaleType = Enum.ScaleType.Fit
             })
 
-            local TopClickBtn = Create("TextButton", {
-                Parent = DropFrame,
-                BackgroundTransparency = 1,
-                Size = UDim2.new(1, 0, 0, 52),
-                Text = ""
-            })
-
-            Create("Frame", {
-                Parent = DropFrame,
-                BackgroundColor3 = DeltaXLib.Theme.Accent,
-                BackgroundTransparency = 0.82,
-                Position = UDim2.new(0, 12, 0, 52),
-                Size = UDim2.new(1, -24, 0, 1)
-            })
-
             local List = Create("Frame", {
                 Parent = DropFrame,
                 BackgroundTransparency = 1,
                 Position = UDim2.new(0, 0, 0, 56),
-                Size = UDim2.new(1, 0, 0, #Config.Options * 38)
+                Size = UDim2.new(1, 0, 0, #Config.Options * 36)
             })
             local ListLayout = Create("UIListLayout", {Parent = List, Padding = UDim.new(0, 3)})
-            Create("UIPadding", {Parent = List, PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8)})
+            Create("UIPadding", {Parent = List, PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 6)})
 
             local function UpdateTitle()
                 if #SelectedOptions == 0 then
-                    TitleLabel.Text = Config.Title .. " : " .. (Config.AllowNone and "未选择" or "请选择")
+                    DescLabel.Text = Config.Desc or "点击展开选项列表"
                 else
-                    TitleLabel.Text = Config.Title .. " : " .. table.concat(SelectedOptions, ", ")
+                    DescLabel.Text = "已选: " .. table.concat(SelectedOptions, ", ")
                 end
             end
 
             for _, opt in pairs(Config.Options) do
                 local OptBtn = Create("TextButton", {
                     Parent = List,
-                    BackgroundColor3 = Color3.fromRGB(32, 32, 44),
-                    Size = UDim2.new(1, 0, 0, 34),
+                    BackgroundColor3 = Color3.fromRGB(32, 32, 42),
+                    Size = UDim2.new(1, 0, 0, 32),
                     Font = Enum.Font.GothamMedium,
                     Text = "  " .. tostring(opt),
-                    TextColor3 = Color3.fromRGB(185, 185, 195),
+                    TextColor3 = Color3.fromRGB(190, 190, 200),
                     TextSize = 12,
                     TextXAlignment = Enum.TextXAlignment.Left,
                     AutoButtonColor = false
                 })
                 Create("UICorner", {Parent = OptBtn, CornerRadius = UDim.new(0, 10)})
 
-                local OptClickStart = nil
                 OptBtn.InputBegan:Connect(function(Input)
                     if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-                        OptClickStart = tick()
-                        ApplyTween(OptBtn, {BackgroundColor3 = Color3.fromRGB(40, 40, 56)}, 0.12)
-                    end
-                end)
-
-                OptBtn.InputEnded:Connect(function(Input)
-                    if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-                        if OptClickStart and (tick() - OptClickStart) < 0.25 then
-                            if DeltaXLib.IsDraggingSlider then return end
-                            local foundIndex = table.find(SelectedOptions, opt)
-                            if foundIndex then
-                                table.remove(SelectedOptions, foundIndex)
-                                ApplyTween(OptBtn, {BackgroundColor3 = Color3.fromRGB(32, 32, 44), TextColor3 = Color3.fromRGB(185, 185, 195)}, 0.2)
-                            else
-                                table.insert(SelectedOptions, opt)
-                                ApplyTween(OptBtn, {BackgroundColor3 = Color3.fromRGB(35, 42, 68), TextColor3 = DeltaXLib.Theme.Accent}, 0.2)
-                            end
-                            UpdateTitle()
-                            if Config.Callback then Config.Callback(SelectedOptions) end
+                        if DeltaXLib.IsDraggingSlider or DeltaXLib.IsDraggingUI then return end
+                        local foundIndex = table.find(SelectedOptions, opt)
+                        if foundIndex then
+                            table.remove(SelectedOptions, foundIndex)
+                            ApplyTween(OptBtn, {TextColor3 = Color3.fromRGB(190, 190, 200), BackgroundColor3 = Color3.fromRGB(32, 32, 42)}, 0.2)
                         else
-                            ApplyTween(OptBtn, {BackgroundColor3 = Color3.fromRGB(32, 32, 44)}, 0.15)
+                            table.insert(SelectedOptions, opt)
+                            ApplyTween(OptBtn, {TextColor3 = DeltaXLib.Theme.Accent, BackgroundColor3 = Color3.fromRGB(0, 100, 200)}, 0.2)
                         end
-                        OptClickStart = nil
+                        UpdateTitle()
+                        if Config.Callback then Config.Callback(SelectedOptions) end
                     end
                 end)
             end
 
-            local DropClickStart = nil
-            TopClickBtn.InputBegan:Connect(function(Input)
+            TopBtn.InputBegan:Connect(function(Input)
                 if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-                    DropClickStart = tick()
+                    if DeltaXLib.IsDraggingSlider or DeltaXLib.IsDraggingUI then return end
+                    Expanded = not Expanded
+                    local targetHeight = Expanded and (56 + ListLayout.AbsoluteContentSize.Y + 10) or 56
+                    ApplyTween(DropFrame, {Size = UDim2.new(1, 0, 0, targetHeight)}, 0.32)
+                    ApplyTween(DropArrow, {Rotation = Expanded and 180 or 0}, 0.32)
                 end
             end)
 
-            TopClickBtn.InputEnded:Connect(function(Input)
-                if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-                    if DropClickStart and (tick() - DropClickStart) < 0.25 then
-                        if DeltaXLib.IsDraggingSlider then return end
-                        Expanded = not Expanded
-                        local targetHeight = Expanded and (56 + ListLayout.AbsoluteContentSize.Y + 10) or 52
-                        ApplyTween(DropFrame, {Size = UDim2.new(1, 0, 0, targetHeight)}, 0.32)
-                        ApplyTween(DropArrow, {Rotation = Expanded and 180 or 0}, 0.32)
-                        Ripple(DropFrame)
-                    end
-                    DropClickStart = nil
-                end
+            TopBtn.MouseLeave:Connect(function()
+                ApplyTween(DropFrame, {BackgroundColor3 = DeltaXLib.Theme.Secondary}, 0.2)
             end)
 
             local DropMethods = {Instance = DropFrame}
@@ -1877,8 +1684,7 @@ function DeltaXLib:CreateWindow(Options)
             local Lab = Create("Frame", {
                 Parent = Config.Parent or TabPage,
                 BackgroundTransparency = 1,
-                Size = UDim2.new(1, 0, 0, 28),
-                Name = (Config.Title or "Label") .. "_Label"
+                Size = UDim2.new(1, 0, 0, 26)
             })
             Create("TextLabel", {
                 Name = "TitleLabel",
@@ -1890,67 +1696,64 @@ function DeltaXLib:CreateWindow(Options)
                 Text = Config.Title,
                 TextColor3 = Config.Color or DeltaXLib.Theme.TextDark,
                 TextSize = 13,
-                TextXAlignment = Enum.TextXAlignment.Left,
-                RichText = true
+                TextXAlignment = Enum.TextXAlignment.Left
             })
-            local LabelMethods = {Instance = Lab}
-            function LabelMethods:SetText(T)
-                Lab:FindFirstChild("TitleLabel").Text = T
-            end
-            return LabelMethods
+            return Lab
         end
 
         function CompLib:Info(Config)
             local InfoValues = Config.Values or {}
             local InfoFrame = Create("Frame", {
                 Parent = Config.Parent or TabPage,
-                BackgroundColor3 = Color3.fromRGB(28, 28, 38),
+                BackgroundColor3 = Color3.fromRGB(24, 24, 32),
                 Size = UDim2.new(1, 0, 0, 48),
                 Name = (Config.Title or "Info") .. "_Info",
                 ClipsDescendants = true
             })
             Create("UICorner", {Parent = InfoFrame, CornerRadius = UDim.new(0, 14)})
-            Create("UIStroke", {Parent = InfoFrame, Color = DeltaXLib.Theme.Accent, Thickness = 1.5, Transparency = 0.62})
-
-            local InfoHeader = Create("Frame", {
+            Create("UIStroke", {
                 Parent = InfoFrame,
-                BackgroundColor3 = DeltaXLib.Theme.Accent,
-                BackgroundTransparency = 0.88,
-                Position = UDim2.new(0, 0, 0, 0),
-                Size = UDim2.new(1, 0, 0, 22)
+                Color = DeltaXLib.Theme.Accent,
+                Thickness = 1.5,
+                Transparency = 0.55
             })
 
-            Create("TextLabel", {
-                Name = "TitleLabel",
-                Parent = InfoHeader,
+            local IconHolder = Create("Frame", {
+                Parent = InfoFrame,
+                BackgroundColor3 = DeltaXLib.Theme.Accent,
+                BackgroundTransparency = 0.75,
+                Position = UDim2.new(0, 10, 0, 8),
+                Size = UDim2.new(0, 28, 0, 28)
+            })
+            Create("UICorner", {Parent = IconHolder, CornerRadius = UDim.new(0, 9)})
+            Create("ImageLabel", {
+                Parent = IconHolder,
                 BackgroundTransparency = 1,
-                Position = UDim2.new(0, 14, 0, 0),
-                Size = UDim2.new(0.6, -14, 1, 0),
+                Position = UDim2.new(0.15, 0, 0.15, 0),
+                Size = UDim2.new(0.7, 0, 0.7, 0),
+                Image = Config.Icon or "rbxassetid://7072706796",
+                ImageColor3 = DeltaXLib.Theme.Accent,
+                ScaleType = Enum.ScaleType.Fit
+            })
+
+            local TitleLabelInfo = Create("TextLabel", {
+                Name = "TitleLabel",
+                Parent = InfoFrame,
+                BackgroundTransparency = 1,
+                Position = UDim2.new(0, 48, 0, 6),
+                Size = UDim2.new(1, -58, 0, 15),
                 Font = Enum.Font.GothamBold,
                 Text = Config.Title or "实时数据",
                 TextColor3 = DeltaXLib.Theme.Accent,
-                TextSize = 11,
+                TextSize = 12,
                 TextXAlignment = Enum.TextXAlignment.Left
-            })
-
-            Create("TextLabel", {
-                Parent = InfoHeader,
-                BackgroundTransparency = 1,
-                Position = UDim2.new(0.6, 0, 0, 0),
-                Size = UDim2.new(0.4, -10, 1, 0),
-                Font = Enum.Font.Gotham,
-                Text = Config.Desc or "实时显示数据",
-                TextColor3 = DeltaXLib.Theme.Accent,
-                TextTransparency = 0.5,
-                TextSize = 10,
-                TextXAlignment = Enum.TextXAlignment.Right
             })
 
             local DataContainer = Create("Frame", {
                 Parent = InfoFrame,
                 BackgroundTransparency = 1,
-                Position = UDim2.new(0, 12, 0, 24),
-                Size = UDim2.new(1, -24, 0, 0)
+                Position = UDim2.new(0, 48, 0, 22),
+                Size = UDim2.new(1, -58, 0, 0)
             })
             local DataLayout = Create("UIListLayout", {
                 Parent = DataContainer,
@@ -1960,21 +1763,17 @@ function DeltaXLib:CreateWindow(Options)
 
             local Labels = {}
             local function RefreshSize()
-                ApplyTween(InfoFrame, {Size = UDim2.new(1, 0, 0, 28 + DataLayout.AbsoluteContentSize.Y + 6)}, 0.2)
+                local ContentSize = DataLayout.AbsoluteContentSize.Y
+                ApplyTween(InfoFrame, {Size = UDim2.new(1, 0, 0, 32 + ContentSize + 6)}, 0.2)
             end
-
             local function SetData(Key, Value)
                 if not Labels[Key] then
                     Labels[Key] = Create("TextLabel", {
                         Parent = DataContainer,
                         BackgroundTransparency = 1,
-                        Size = UDim2.new(1, 0, 0, 18),
+                        Size = UDim2.new(1, 0, 0, 17),
                         Font = Enum.Font.GothamMedium,
-                        Text = string.format("<font color='#%02x%02x%02x'>%s</font>: %s",
-                            math.floor(DeltaXLib.Theme.Accent.R * 255),
-                            math.floor(DeltaXLib.Theme.Accent.G * 255),
-                            math.floor(DeltaXLib.Theme.Accent.B * 255),
-                            tostring(Key), tostring(Value)),
+                        Text = string.format("%s: %s", tostring(Key), tostring(Value)),
                         TextColor3 = DeltaXLib.Theme.White,
                         TextSize = 12,
                         TextXAlignment = Enum.TextXAlignment.Left,
@@ -1982,19 +1781,14 @@ function DeltaXLib:CreateWindow(Options)
                     })
                     RefreshSize()
                 else
-                    Labels[Key].Text = string.format("<font color='#%02x%02x%02x'>%s</font>: %s",
-                        math.floor(DeltaXLib.Theme.Accent.R * 255),
-                        math.floor(DeltaXLib.Theme.Accent.G * 255),
-                        math.floor(DeltaXLib.Theme.Accent.B * 255),
-                        tostring(Key), tostring(Value))
+                    Labels[Key].Text = string.format("%s: %s", tostring(Key), tostring(Value))
                 end
             end
-
             for k, v in pairs(InfoValues) do
                 SetData(k, v)
             end
 
-            local InfoMethods = {Instance = InfoFrame}
+            local InfoMethods = {}
             function InfoMethods:Update(Key, NewValue)
                 if Key and not NewValue then
                     for k, _ in pairs(Labels) do
@@ -2008,13 +1802,20 @@ function DeltaXLib:CreateWindow(Options)
             return InfoMethods
         end
 
+        function CompLib:Notify(Options)
+            return ShowNotification(ScreenGui, Options)
+        end
+
         return CompLib
+    end
+
+    function DeltaXLib:Notify(Options)
+        return ShowNotification(ScreenGui, Options)
     end
 
     MainFrame.Size = UDim2.new(0, 0, 0, 0)
     MainFrame.Visible = true
-    TweenService:Create(MainFrame, TweenInfo.new(0.48, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 620, 0, 420)}):Play()
-
+    TweenService:Create(MainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 620, 0, 420)}):Play()
     return DeltaXLib
 end
 
